@@ -837,7 +837,7 @@ button.btn{cursor:pointer;font-family:var(--sans);background:transparent;color:v
     card.innerHTML =
       '<span class="tag"><span class="live"></span>Reel '+m+'</span>'+
       '<button class="sound" aria-label="Звук">'+muted+'</button>'+
-      '<video src="assets/videos/video-'+m+'.mp4" loop muted playsinline preload="auto"></video>';
+      '<video src="assets/videos/video-'+m+'.mp4" loop muted playsinline autoplay preload="auto"></video>';
     feed.appendChild(card);
   }
 
@@ -861,7 +861,26 @@ button.btn{cursor:pointer;font-family:var(--sans);background:transparent;color:v
       else { vid.pause(); }
     });
   },{threshold:[0,.1,.2,.3,.4,.5,.6,.7,.8,.9,1]});
-  vids.forEach(function(vid){ vio.observe(vid); });
+  vids.forEach(function(vid){
+    vio.observe(vid);
+    // Guarantee a visible frame even when autoplay is blocked (e.g. on file://
+    // pages before the first user gesture): nudging currentTime forces the browser
+    // to decode and paint that frame, so an unplayed reel never shows a black box.
+    var paintFrame = function(){ if(vid.paused && vid.currentTime < 0.05){ try { vid.currentTime = 0.05; } catch(e){} } };
+    if(vid.readyState >= 2){ paintFrame(); } else { vid.addEventListener('loadeddata', paintFrame, {once:true}); }
+  });
+  // Some browsers refuse muted autoplay until the first interaction (common on
+  // file:// pages). Start whichever reel is in view on that first gesture.
+  var kickInView = function(){
+    feed.querySelectorAll('video').forEach(function(vid){
+      var r = vid.getBoundingClientRect(), vh = window.innerHeight || 1;
+      var visible = Math.max(0, Math.min(r.bottom, vh) - Math.max(r.top, 0));
+      if(visible / vh >= 0.5 || (r.height && visible / r.height >= 0.5)){ vid.play().catch(function(){}); }
+    });
+  };
+  ['pointerdown','touchstart','keydown','wheel'].forEach(function(ev){
+    window.addEventListener(ev, kickInView, {once:true, passive:true});
+  });
   feed.querySelectorAll('.sound').forEach(function(btn){
     btn.addEventListener('click', function(){
       var vid = btn.parentElement.querySelector('video');
