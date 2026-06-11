@@ -14,6 +14,7 @@
 
 <!-- HOTBAR -->
 <nav class="hotbar" id="hotbar">
+  <div class="hotbar__snow" id="hotbarSnow" aria-hidden="true"></div>
   <div class="hotbar__brand"><span class="dot"></span>Yeokie</div>
   <div class="hotbar__tabs" role="tablist">
     <button class="htab active" data-tab="gallery" role="tab">
@@ -42,8 +43,12 @@
           <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
             <div class="meta">18 кадров · листай →</div>
             <div class="strip-nav">
-              <button class="strip-arrow" id="stripPrev" aria-label="Назад">‹</button>
-              <button class="strip-arrow" id="stripNext" aria-label="Вперёд">›</button>
+              <button class="strip-arrow" id="stripPrev" aria-label="Назад" type="button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg>
+              </button>
+              <button class="strip-arrow" id="stripNext" aria-label="Вперёд" type="button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>
+              </button>
             </div>
           </div>
         </div>

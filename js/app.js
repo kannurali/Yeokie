@@ -78,8 +78,23 @@
   document.querySelectorAll('.photo-card').forEach(function(c){ io.observe(c); });
 
   /* ── strip arrow nav ── */
-  document.getElementById('stripNext').addEventListener('click', function(){ stripEl.scrollBy({left:300,behavior:'smooth'}); });
-  document.getElementById('stripPrev').addEventListener('click', function(){ stripEl.scrollBy({left:-300,behavior:'smooth'}); });
+  var stripPrev = document.getElementById('stripPrev');
+  var stripNext = document.getElementById('stripNext');
+  stripNext.addEventListener('click', function(){ stripEl.scrollBy({left:300,behavior:'smooth'}); });
+  stripPrev.addEventListener('click', function(){ stripEl.scrollBy({left:-300,behavior:'smooth'}); });
+  // Grey out the arrow that has nowhere left to scroll. The strip's resting
+  // start isn't 0 — scroll-snap parks it at the first card (= the left padding),
+  // so compare against that offset rather than a hard zero.
+  function updateStripArrows(){
+    var first = stripEl.firstElementChild;
+    var startAt = first ? first.offsetLeft : 0;
+    var maxScroll = stripEl.scrollWidth - stripEl.clientWidth;
+    stripPrev.classList.toggle('is-disabled', stripEl.scrollLeft <= startAt + 4);
+    stripNext.classList.toggle('is-disabled', stripEl.scrollLeft >= maxScroll - 4);
+  }
+  stripEl.addEventListener('scroll', updateStripArrows, {passive:true});
+  window.addEventListener('resize', updateStripArrows);
+  updateStripArrows();
 
   /* ── drag scroll ── */
   var dragging=false, dragStartX, dragScrollLeft;
@@ -92,16 +107,31 @@
   var feed = document.getElementById('feed');
   var speaker = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>';
   var muted = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>';
+  var playGlyph = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"></path></svg>';
   for (var v=1;v<=VIDEOS;v++){
     var m = String(v).padStart(2,'0');
     var card = document.createElement('div');
-    card.className='reel';
+    card.className='reel paused';
     card.innerHTML =
       '<span class="tag"><span class="live"></span>Reel '+m+'</span>'+
       '<button class="sound" aria-label="Звук">'+muted+'</button>'+
-      '<video src="assets/videos/video-'+m+'.mp4" loop muted playsinline autoplay preload="auto"></video>';
+      '<video src="assets/videos/video-'+m+'.mp4" loop muted playsinline preload="auto"></video>'+
+      '<div class="reel__play" aria-hidden="true">'+playGlyph+'</div>';
     feed.appendChild(card);
   }
+
+  // ---- play / pause: click a reel to toggle, keep the overlay in sync ----
+  feed.querySelectorAll('.reel').forEach(function(card){
+    var vid = card.querySelector('video');
+    // The overlay only mirrors reality, so it can never drift out of sync.
+    vid.addEventListener('play',  function(){ card.classList.remove('paused'); });
+    vid.addEventListener('pause', function(){ card.classList.add('paused'); });
+    card.addEventListener('click', function(e){
+      if(e.target.closest('.sound')) return;   // sound button has its own handler
+      if(vid.paused){ card.dataset.userPaused='0'; vid.play().catch(function(){}); }
+      else         { card.dataset.userPaused='1'; vid.pause(); }
+    });
+  });
 
   // ---- scroll reveal ----
   var io2 = new IntersectionObserver(function(entries){
@@ -119,8 +149,10 @@
       // The viewport-coverage check handles tall portrait reels that can never reach
       // a high self-ratio on short windows (otherwise they would never autoplay).
       var coversViewport = e.intersectionRect.height / vh;
-      if(e.isIntersecting && (e.intersectionRatio >= .5 || coversViewport >= .5)){ vid.play().catch(function(){}); }
-      else { vid.pause(); }
+      // Auto-play the reel in view — unless the viewer deliberately paused it.
+      if(e.isIntersecting && (e.intersectionRatio >= .5 || coversViewport >= .5)){
+        if(vid.parentElement.dataset.userPaused !== '1'){ vid.play().catch(function(){}); }
+      } else { vid.pause(); }   // offscreen: free resources without clearing intent
     });
   },{threshold:[0,.1,.2,.3,.4,.5,.6,.7,.8,.9,1]});
   vids.forEach(function(vid){
@@ -135,6 +167,7 @@
   // file:// pages). Start whichever reel is in view on that first gesture.
   var kickInView = function(){
     feed.querySelectorAll('video').forEach(function(vid){
+      if(vid.parentElement.dataset.userPaused === '1') return;
       var r = vid.getBoundingClientRect(), vh = window.innerHeight || 1;
       var visible = Math.max(0, Math.min(r.bottom, vh) - Math.max(r.top, 0));
       if(visible / vh >= 0.5 || (r.height && visible / r.height >= 0.5)){ vid.play().catch(function(){}); }
@@ -144,11 +177,12 @@
     window.addEventListener(ev, kickInView, {once:true, passive:true});
   });
   feed.querySelectorAll('.sound').forEach(function(btn){
-    btn.addEventListener('click', function(){
+    btn.addEventListener('click', function(e){
+      e.stopPropagation();   // don't trigger the reel's play/pause toggle
       var vid = btn.parentElement.querySelector('video');
       vid.muted = !vid.muted;
       btn.innerHTML = vid.muted ? muted : speaker;
-      if(!vid.muted){ vid.play().catch(function(){}); }
+      if(!vid.muted){ btn.parentElement.dataset.userPaused='0'; vid.play().catch(function(){}); }
     });
   });
 
@@ -201,6 +235,25 @@
       window.scrollTo(0,0);
     });
   });
+
+  /* ========== HOTBAR SNOW ========== */
+  /* Tiny flakes that fall only inside the nav bar (the bar clips its overflow). */
+  var snow = document.getElementById('hotbarSnow');
+  if(snow && !matchMedia('(prefers-reduced-motion: reduce)').matches){
+    var FLAKES = 18;
+    for(var s=0; s<FLAKES; s++){
+      var f = document.createElement('span');
+      f.className = 'snowflake';
+      var size = (2 + Math.random()*3.4).toFixed(1);
+      f.style.left = (Math.random()*100).toFixed(2) + '%';
+      f.style.width = f.style.height = size + 'px';
+      f.style.opacity = (0.35 + Math.random()*0.5).toFixed(2);
+      f.style.setProperty('--drift', ((Math.random()*2-1)*22).toFixed(1) + 'px');
+      f.style.animationDuration = (3 + Math.random()*3.5).toFixed(2) + 's';
+      f.style.animationDelay = (-Math.random()*6).toFixed(2) + 's';   // start mid-fall
+      snow.appendChild(f);
+    }
+  }
 })();
 
 (function(){
