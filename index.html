@@ -837,7 +837,7 @@ button.btn{cursor:pointer;font-family:var(--sans);background:transparent;color:v
     card.innerHTML =
       '<span class="tag"><span class="live"></span>Reel '+m+'</span>'+
       '<button class="sound" aria-label="Звук">'+muted+'</button>'+
-      '<video src="assets/videos/video-'+m+'.mp4" loop muted playsinline preload="metadata"></video>';
+      '<video src="assets/videos/video-'+m+'.mp4" loop muted playsinline preload="auto"></video>';
     feed.appendChild(card);
   }
 
@@ -852,10 +852,15 @@ button.btn{cursor:pointer;font-family:var(--sans);background:transparent;color:v
   var vio = new IntersectionObserver(function(entries){
     entries.forEach(function(e){
       var vid = e.target;
-      if(e.intersectionRatio > .6){ vid.play().catch(function(){}); }
+      var vh = window.innerHeight || document.documentElement.clientHeight || 1;
+      // Play when the clip is at least half-visible OR fills at least half the screen.
+      // The viewport-coverage check handles tall portrait reels that can never reach
+      // a high self-ratio on short windows (otherwise they would never autoplay).
+      var coversViewport = e.intersectionRect.height / vh;
+      if(e.isIntersecting && (e.intersectionRatio >= .5 || coversViewport >= .5)){ vid.play().catch(function(){}); }
       else { vid.pause(); }
     });
-  },{threshold:[0,.6,1]});
+  },{threshold:[0,.1,.2,.3,.4,.5,.6,.7,.8,.9,1]});
   vids.forEach(function(vid){ vio.observe(vid); });
   feed.querySelectorAll('.sound').forEach(function(btn){
     btn.addEventListener('click', function(){
