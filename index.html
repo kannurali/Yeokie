@@ -12,7 +12,6 @@
 </head>
 <body>
 
-<!-- HOTBAR -->
 <nav class="hotbar" id="hotbar">
   <div class="hotbar__snow" id="hotbarSnow" aria-hidden="true"></div>
   <div class="hotbar__brand"><span class="dot"></span>Yeokie</div>
@@ -34,7 +33,6 @@
 
 <div class="page-root">
 
-  <!-- TAB: GALLERY + VIDEOS -->
   <div class="tab-panel active" id="tab-gallery" role="tabpanel">
     <section class="section" id="gallery">
       <div class="wrap">
@@ -61,7 +59,7 @@
       </div>
     </section>
 
-    <div style="height:1px;background:var(--line);margin:0 0 0"></div>
+    <div style="height:1px;background:var(--line)"></div>
 
     <section class="section" id="videos">
       <div class="feed-band" aria-hidden="true"></div>
@@ -76,7 +74,6 @@
     </section>
   </div>
 
-  <!-- TAB: COLLECTION -->
   <div class="tab-panel" id="tab-collection" role="tabpanel">
     <section class="section" id="collection">
       <div class="wrap">
@@ -105,7 +102,6 @@
     </section>
   </div>
 
-  <!-- TAB: MUSIC -->
   <div class="tab-panel" id="tab-music" role="tabpanel">
     <section class="section">
       <div class="wrap">
@@ -135,7 +131,6 @@
     </section>
   </div>
 
-  <!-- TAB: DATE -->
   <div class="tab-panel" id="tab-date" role="tabpanel">
     <section class="section" id="date">
       <div class="wrap">
@@ -167,23 +162,20 @@
     </section>
   </div>
 
-</div><!-- /page-root -->
+</div>
 
-<!-- GALLERY VIEWER -->
 <div class="lb" id="lb" aria-hidden="true">
   <div class="lb-stage">
     <div class="lb-slot left"  id="lbLeft"  onclick="lbNav(-1)"><img id="lbImgL" alt=""></div>
-    <div class="lb-slot center"                                ><img id="lbImg"  alt=""></div>
+    <div class="lb-slot center"              ><img id="lbImg"  alt=""></div>
     <div class="lb-slot right" id="lbRight" onclick="lbNav(+1)"><img id="lbImgR" alt=""></div>
   </div>
   <button class="lb-btn lb-prev" id="lbPrev" aria-label="Назад">‹</button>
   <button class="lb-btn lb-next" id="lbNext" aria-label="Вперёд">›</button>
 </div>
 
-<!-- HEARTS CANVAS -->
 <canvas id="heartsCanvas" aria-hidden="true"></canvas>
 
-<!-- SPOTIFY-STYLE PLAYER -->
 <div class="player" id="player" aria-hidden="true">
   <div class="player__track">
     <div class="player__art"><img id="plArt" alt="" decoding="async"></div>
