@@ -781,6 +781,9 @@
       btnNo=document.getElementById('btnNo'),
       ask=document.getElementById('dateAsk'),
       answer=document.getElementById('dateAnswer'),
+      dateMsgForm=document.getElementById('dateMsgForm'),
+      dateMsgInput=document.getElementById('dateMsgInput'),
+      dateMsgSend=document.getElementById('dateMsgSend'),
       dodges=0, lastDodge=0, surrendered=false, accepted=false;
 
   function moveNo(){
@@ -818,20 +821,54 @@
     moveNo();
   }
 
-  function accept(){
+  /* Telegram relay — a tiny Cloudflare Worker holds the bot token (never in this
+     public code). Empty URL = disabled, so nothing is sent until it's set. */
+  var NOTIFY_URL = 'https://misty-truth-dc9b.nuralisky12.workers.dev/';
+  function notifyTelegram(text){
+    if(!NOTIFY_URL) return Promise.resolve(false);
+    return fetch(NOTIFY_URL, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ text: text })
+    }).then(function(r){ return r.ok; }).catch(function(){ return false; });
+  }
+
+  function accept(which){
     if(accepted) return;
     accepted=true;
     ask.classList.add('gone');
     answer.hidden=false;
     startHearts();
+    /* let me know she said yes — once per device, so reloads don't re-ping */
+    try{
+      if(!localStorage.getItem('yeokie:date-yes')){
+        notifyTelegram('💚 Она ответила ДА на свидание! ('+(which||'Да')+')\n'+new Date().toLocaleString('ru-RU'))
+          .then(function(ok){ if(ok){ try{ localStorage.setItem('yeokie:date-yes','1'); }catch(e){} } });
+      }
+    }catch(e){}
+    setTimeout(function(){ if(dateMsgInput) dateMsgInput.focus(); }, 450);
+  }
+
+  /* her message → straight to my Telegram */
+  if(dateMsgForm){
+    dateMsgForm.addEventListener('submit', function(e){
+      e.preventDefault();
+      var msg = dateMsgInput.value.trim();
+      if(!msg){ dateMsgInput.focus(); return; }
+      dateMsgSend.disabled = true;
+      notifyTelegram('✍️ Сообщение от неё:\n\n«'+msg+'»').then(function(){
+        dateMsgInput.disabled = true;
+        dateMsgSend.textContent = 'Отправлено 💚';
+        dateMsgSend.classList.add('is-sent');
+      });
+    });
   }
 
   btnNo.addEventListener('pointerenter',dodge);
   btnNo.addEventListener('touchstart',function(e){
     if(!surrendered){ e.preventDefault(); dodge(); }
   },{passive:false});
-  btnNo.addEventListener('click',function(){ surrendered ? accept() : dodge(); });
-  btnYes.addEventListener('click',accept);
+  btnNo.addEventListener('click',function(){ surrendered ? accept('Тоже да, но другого цвета') : dodge(); });
+  btnYes.addEventListener('click',function(){ accept('Да, конечно'); });
 
   /* сердечки на canvas */
   var cv=document.getElementById('heartsCanvas'), hctx=null, parts=[], heartsOn=false;

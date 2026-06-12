@@ -688,6 +688,19 @@ button.btn{cursor:pointer;font-family:var(--sans);background:transparent;color:v
 @keyframes beat{0%,100%{transform:scale(1)}25%{transform:scale(1.14)}40%{transform:scale(1)}}
 .date-answer h3{font-family:var(--serif);font-weight:600;font-size:clamp(2rem,5.5vw,3.2rem);margin:0 0 .7rem;line-height:1.05}
 .date-answer p{color:var(--muted);max-width:48ch;margin:0 auto}
+.date-msg{display:flex;flex-direction:column;gap:.85rem;max-width:30rem;margin:2.2rem auto 0}
+.date-msg__label{font-size:.92rem;color:var(--ink);letter-spacing:.01em}
+.date-msg__input{
+  width:100%;background:rgba(12,23,18,.7);border:1px solid var(--line);border-radius:14px;
+  color:var(--ink);font-family:var(--sans);font-size:.95rem;line-height:1.5;
+  padding:.85rem 1rem;outline:none;resize:vertical;min-height:3.6rem;
+  transition:border-color .2s, box-shadow .2s;
+}
+.date-msg__input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(51,168,108,.12)}
+.date-msg__input::placeholder{color:rgba(157,181,166,.5)}
+.date-msg__input:disabled{opacity:.65}
+.date-msg .btn.primary{align-self:center}
+.date-msg .btn.primary.is-sent{background:rgba(51,168,108,.18);box-shadow:none;cursor:default;color:var(--accent)}
 #heartsCanvas{position:fixed;inset:0;z-index:95;pointer-events:none;display:none}
 @media(max-width:680px){
   .c-row{grid-template-columns:1fr}
