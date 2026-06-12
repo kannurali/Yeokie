@@ -585,6 +585,15 @@
     {id:'default3', title:'Blinding Lights', artist:'The Weeknd', vibe:'ночное', emoji:'🌃'}
   ]);
 
+  /* real, playable tracks bundled with the site (audio + cover in assets/music) */
+  var LIBRARY = [
+    { id:'lib-stalevarov', title:'Улица Сталеваров', artist:'Валентин Стрыкало', vibe:'ностальгия',
+      audio:'assets/music/track-01.mp3', cover:'assets/music/cover-01.jpg' }
+  ];
+
+  var ICON_PLAY  = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"></path></svg>';
+  var ICON_PAUSE = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"></rect><rect x="14" y="5" width="4" height="14" rx="1"></rect></svg>';
+
   var musicGrid = document.getElementById('musicGrid');
   var musicForm = document.getElementById('musicForm');
   var musicAddBtn = document.getElementById('musicAddBtn');
@@ -593,27 +602,52 @@
 
   function renderMusic(){
     musicGrid.innerHTML='';
-    musicItems.forEach(function(track){
-      var card = document.createElement('div');
-      card.className = 'music-card';
-      var emoji = track.emoji || '🎵';
-      card.innerHTML =
-        '<div class="music-card__art">'+emoji+'</div>'+
-        '<div class="music-card__info">'+
-          '<div class="music-card__title">'+esc2(track.title)+'</div>'+
-          '<div class="music-card__artist">'+esc2(track.artist)+'</div>'+
-          (track.vibe ? '<div class="music-card__vibe">'+esc2(track.vibe)+'</div>' : '')+
-        '</div>'+
-        '<button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.9rem;opacity:0;transition:opacity .2s;padding:.3rem" class="music-del" data-id="'+track.id+'" title="Удалить">✕</button>';
-      card.querySelector('.music-del').addEventListener('click', function(){
-        musicItems = musicItems.filter(function(t){ return t.id !== track.id; });
-        persist(MUSIC_KEY, musicItems);
-        renderMusic();
-      });
-      card.addEventListener('mouseenter', function(){ card.querySelector('.music-del').style.opacity='1'; });
-      card.addEventListener('mouseleave', function(){ card.querySelector('.music-del').style.opacity='0'; });
-      musicGrid.appendChild(card);
+    LIBRARY.forEach(function(track){ musicGrid.appendChild(playableCard(track)); });
+    musicItems.forEach(function(track){ musicGrid.appendChild(noteCard(track)); });
+    markPlayingCards();
+  }
+
+  /* card backed by a real audio file → click to play in the Spotify-style bar */
+  function playableCard(track){
+    var card = document.createElement('div');
+    card.className = 'music-card music-card--playable';
+    card.dataset.id = track.id;
+    card.innerHTML =
+      '<div class="music-card__art">'+
+        '<img src="'+track.cover+'" alt="" loading="lazy">'+
+        '<button class="music-card__play" type="button" aria-label="Слушать">'+ICON_PLAY+'</button>'+
+      '</div>'+
+      '<div class="music-card__info">'+
+        '<div class="music-card__title">'+esc2(track.title)+'</div>'+
+        '<div class="music-card__artist">'+esc2(track.artist)+'</div>'+
+        (track.vibe ? '<div class="music-card__vibe">'+esc2(track.vibe)+'</div>' : '')+
+      '</div>';
+    card.addEventListener('click', function(){ togglePlay(track); });
+    return card;
+  }
+
+  /* user-added note card (no audio) — title/artist/vibe with delete */
+  function noteCard(track){
+    var card = document.createElement('div');
+    card.className = 'music-card';
+    card.dataset.id = track.id;
+    var emoji = track.emoji || '🎵';
+    card.innerHTML =
+      '<div class="music-card__art">'+emoji+'</div>'+
+      '<div class="music-card__info">'+
+        '<div class="music-card__title">'+esc2(track.title)+'</div>'+
+        '<div class="music-card__artist">'+esc2(track.artist)+'</div>'+
+        (track.vibe ? '<div class="music-card__vibe">'+esc2(track.vibe)+'</div>' : '')+
+      '</div>'+
+      '<button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.9rem;opacity:0;transition:opacity .2s;padding:.3rem" class="music-del" data-id="'+track.id+'" title="Удалить">✕</button>';
+    card.querySelector('.music-del').addEventListener('click', function(){
+      musicItems = musicItems.filter(function(t){ return t.id !== track.id; });
+      persist(MUSIC_KEY, musicItems);
+      renderMusic();
     });
+    card.addEventListener('mouseenter', function(){ card.querySelector('.music-del').style.opacity='1'; });
+    card.addEventListener('mouseleave', function(){ card.querySelector('.music-del').style.opacity='0'; });
+    return card;
   }
 
   function esc2(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
@@ -643,6 +677,99 @@
     document.getElementById('mfArtist').value='';
     document.getElementById('mfVibe').value='';
     document.getElementById('mfEmoji').value='';
+  });
+
+  /* ===== ПЛЕЕР (в стиле Spotify) ===== */
+  var audioEl  = document.getElementById('plAudio');
+  var player   = document.getElementById('player');
+  var plArt    = document.getElementById('plArt');
+  var plTitle  = document.getElementById('plTitle');
+  var plArtist = document.getElementById('plArtist');
+  var plPlay   = document.getElementById('plPlay');
+  var plBar    = document.getElementById('plBar');
+  var plFill   = document.getElementById('plFill');
+  var plCur    = document.getElementById('plCur');
+  var plDur    = document.getElementById('plDur');
+  var plClose  = document.getElementById('plClose');
+  var curId = null, scrubbing = false;
+  plPlay.innerHTML = ICON_PLAY;
+
+  function fmt(s){ s=Math.max(0,Math.floor(s||0)); var m=Math.floor(s/60), x=s%60; return m+':'+(x<10?'0':'')+x; }
+
+  function markPlayingCards(){
+    var playing = audioEl && !audioEl.paused;
+    musicGrid.querySelectorAll('.music-card--playable').forEach(function(c){
+      var on = (c.dataset.id===curId && playing);
+      c.classList.toggle('is-playing', on);
+      var pb = c.querySelector('.music-card__play');
+      if(pb) pb.innerHTML = on ? ICON_PAUSE : ICON_PLAY;
+    });
+  }
+  function setPlayUI(playing){
+    plPlay.innerHTML = playing ? ICON_PAUSE : ICON_PLAY;
+    plPlay.setAttribute('aria-label', playing ? 'Пауза' : 'Играть');
+    markPlayingCards();
+  }
+
+  function togglePlay(track){
+    if(curId===track.id){
+      if(audioEl.paused) audioEl.play().catch(function(){}); else audioEl.pause();
+      return;
+    }
+    curId = track.id;
+    audioEl.src = track.audio;
+    plArt.src = track.cover || '';
+    plTitle.textContent = track.title;
+    plArtist.textContent = track.artist;
+    plCur.textContent='0:00'; plDur.textContent='0:00'; plFill.style.width='0%';
+    player.classList.add('open'); player.setAttribute('aria-hidden','false');
+    document.body.classList.add('has-player');
+    audioEl.play().catch(function(){});
+  }
+
+  plPlay.addEventListener('click', function(e){ e.stopPropagation(); if(audioEl.paused) audioEl.play().catch(function(){}); else audioEl.pause(); });
+  plClose.addEventListener('click', function(){
+    audioEl.pause();
+    player.classList.remove('open'); player.setAttribute('aria-hidden','true');
+    document.body.classList.remove('has-player');
+  });
+
+  audioEl.addEventListener('play',  function(){ setPlayUI(true); });
+  audioEl.addEventListener('pause', function(){ setPlayUI(false); });
+  audioEl.addEventListener('ended', function(){ setPlayUI(false); });
+  audioEl.addEventListener('loadedmetadata', function(){ plDur.textContent=fmt(audioEl.duration); plBar.setAttribute('aria-valuemax', Math.floor(audioEl.duration||0)); });
+  audioEl.addEventListener('timeupdate', function(){ if(!scrubbing) paintSeek(audioEl.currentTime); });
+
+  function paintSeek(t){
+    var d = audioEl.duration || 0, pct = d ? Math.min(100, t/d*100) : 0;
+    plFill.style.width = pct+'%';
+    plCur.textContent = fmt(t);
+    plBar.setAttribute('aria-valuenow', Math.floor(t));
+  }
+  function pctFromEvent(e){
+    var r = plBar.getBoundingClientRect();
+    var cx = (e.clientX!=null) ? e.clientX : (e.touches&&e.touches[0] ? e.touches[0].clientX : 0);
+    return Math.max(0, Math.min(1, (cx - r.left) / r.width));
+  }
+  plBar.addEventListener('pointerdown', function(e){
+    if(!audioEl.src) return;
+    scrubbing = true; player.classList.add('scrubbing');
+    try{ plBar.setPointerCapture(e.pointerId); }catch(_){}
+    paintSeek(pctFromEvent(e)*(audioEl.duration||0));
+  });
+  plBar.addEventListener('pointermove', function(e){ if(scrubbing) paintSeek(pctFromEvent(e)*(audioEl.duration||0)); });
+  function endScrub(e){
+    if(!scrubbing) return;
+    audioEl.currentTime = pctFromEvent(e)*(audioEl.duration||0);
+    scrubbing = false; player.classList.remove('scrubbing');
+  }
+  plBar.addEventListener('pointerup', endScrub);
+  plBar.addEventListener('pointercancel', function(){ scrubbing=false; player.classList.remove('scrubbing'); });
+  plBar.addEventListener('keydown', function(e){
+    var d = audioEl.duration || 0; if(!d && e.key!==' '&&e.key!=='Enter') return;
+    if(e.key==='ArrowRight'){ e.preventDefault(); audioEl.currentTime=Math.min(d,audioEl.currentTime+5); }
+    else if(e.key==='ArrowLeft'){ e.preventDefault(); audioEl.currentTime=Math.max(0,audioEl.currentTime-5); }
+    else if(e.key===' '||e.key==='Enter'){ e.preventDefault(); if(audioEl.paused) audioEl.play().catch(function(){}); else audioEl.pause(); }
   });
 
   renderMusic();
