@@ -832,12 +832,33 @@
     }).then(function(r){ return r.ok; }).catch(function(){ return false; });
   }
 
+  /* song that auto-plays on «Да» — the music from Reel 02 (a hidden video element,
+     so only its audio is heard). Loops as a celebration track. */
+  var dateSong = null;
+  function playDateSong(){
+    try{
+      if(!dateSong){
+        dateSong = document.createElement('video');
+        dateSong.src = 'assets/videos/video-02.mp4';
+        dateSong.loop = true;
+        dateSong.playsInline = true;
+        dateSong.setAttribute('aria-hidden','true');
+        dateSong.style.cssText = 'position:absolute;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none';
+        document.body.appendChild(dateSong);
+      }
+      if(audioEl && !audioEl.paused){ audioEl.pause(); }   // don't overlap the music player
+      dateSong.currentTime = 0;
+      dateSong.play().catch(function(){});
+    }catch(e){}
+  }
+
   function accept(which){
     if(accepted) return;
     accepted=true;
     ask.classList.add('gone');
     answer.hidden=false;
     startHearts();
+    playDateSong();
     /* let me know she said yes — once per device, so reloads don't re-ping */
     try{
       if(!localStorage.getItem('yeokie:date-yes')){
