@@ -589,7 +589,7 @@
 
   /* real, playable tracks bundled with the site (audio + cover in assets/music) */
   var LIBRARY = [
-    { id:'lib-stalevarov', title:'Улица Сталеваров', artist:'Валентин Стрыкало', vibe:'ностальгия',
+    { id:'lib-stalevarov', title:'Улица Сталеваров', artist:'Валентин Стрыкало',
       audio:'assets/music/track-01.mp3', cover:'assets/music/cover-01.jpg' }
   ];
 
