@@ -2,10 +2,30 @@
   var PHOTOS = 18, VIDEOS = 2;
   var PHOTO_NOTES_KEY = 'yeokie:photo-notes:v1';
 
-  /* ── photo notes (per-card) ── */
+  /* ── photo notes (per-card) — shared via the DB when configured, else localStorage ── */
   function loadNotes(){ try{ return JSON.parse(localStorage.getItem(PHOTO_NOTES_KEY)||'{}'); }catch(e){ return {}; } }
   function saveNotes(d){ try{ localStorage.setItem(PHOTO_NOTES_KEY,JSON.stringify(d)); }catch(e){} }
+  function byId(id){ return document.getElementById(id); }
   var photoNotes = loadNotes();
+  var notesDB = null;          // set once the shared DB is ready
+
+  /* paint one card's note area from a note object (or null = empty) */
+  function applyNote(idx, saved){
+    var te=byId('pnote-text-'+idx), de=byId('pnote-date-'+idx),
+        inp=byId('pnote-inp-'+idx), cl=byId('pnote-clear-'+idx);
+    if(!te) return;
+    if(saved && saved.text){
+      te.textContent=saved.text; te.classList.remove('empty');
+      de.textContent=saved.date||''; de.classList.toggle('visible', !!saved.date);
+      if(document.activeElement!==inp) inp.value=saved.text;   // don't clobber active typing
+      cl.hidden=false;
+    } else {
+      te.textContent='Нет заметки'; te.classList.add('empty');
+      de.textContent=''; de.classList.remove('visible');
+      if(document.activeElement!==inp) inp.value='';
+      cl.hidden=true;
+    }
+  }
 
   /* ── build horizontal strip ── */
   var stripEl = document.getElementById('photoStrip');
@@ -13,7 +33,6 @@
   for(var i=1; i<=PHOTOS; i++){
     (function(idx){
       var n = String(idx).padStart(2,'0');
-      var saved = photoNotes[String(idx)] || null;
       var card = document.createElement('div');
       card.className = 'photo-card';
       card.innerHTML =
@@ -22,54 +41,47 @@
           '<img src="assets/photos/photo-'+n+'.jpg" alt="Yeokie — кадр '+n+'" loading="lazy">' +
         '</div>' +
         '<div class="photo-card__body">' +
-          '<div class="photo-card__comment '+(saved?'':'empty')+'" id="pnote-text-'+idx+'">'+(saved?esc(saved.text):'Нет заметки')+'</div>' +
-          '<div class="photo-card__comment-date '+(saved?'visible':'')+'" id="pnote-date-'+idx+'">'+(saved?saved.date:'')+'</div>' +
+          '<div class="photo-card__comment empty" id="pnote-text-'+idx+'">Нет заметки</div>' +
+          '<div class="photo-card__comment-date" id="pnote-date-'+idx+'"></div>' +
           '<div class="photo-card__input-row">' +
-            '<textarea class="photo-card__input" id="pnote-inp-'+idx+'" placeholder="Напиши заметку…" rows="2">'+(saved?esc(saved.text):'')+'</textarea>' +
+            '<textarea class="photo-card__input" id="pnote-inp-'+idx+'" placeholder="Напиши заметку…" rows="2"></textarea>' +
             '<button class="photo-card__save" id="pnote-save-'+idx+'" title="Сохранить">✓</button>' +
           '</div>' +
-          (saved ? '<button class="photo-card__clear" id="pnote-clear-'+idx+'">Удалить заметку</button>' : '<span id="pnote-clear-'+idx+'"></span>') +
+          '<button class="photo-card__clear" id="pnote-clear-'+idx+'" hidden>Удалить заметку</button>' +
         '</div>';
       stripEl.appendChild(card);
 
-      document.getElementById('pnote-save-'+idx).addEventListener('click', function(){
-        var val = document.getElementById('pnote-inp-'+idx).value.trim();
+      applyNote(idx, photoNotes[String(idx)] || null);
+
+      byId('pnote-save-'+idx).addEventListener('click', function(){
+        var val = byId('pnote-inp-'+idx).value.trim();
         if(!val){ return; }
         var date = new Date().toLocaleDateString('ru-RU',{day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'});
-        photoNotes[String(idx)] = {text:val, date:date};
-        saveNotes(photoNotes);
-        var te = document.getElementById('pnote-text-'+idx);
-        te.textContent = val; te.classList.remove('empty');
-        var de = document.getElementById('pnote-date-'+idx);
-        de.textContent = date; de.classList.add('visible');
-        var cl = document.getElementById('pnote-clear-'+idx);
-        if(cl.tagName === 'SPAN'){
-          var b = document.createElement('button');
-          b.className='photo-card__clear'; b.id='pnote-clear-'+idx; b.textContent='Удалить заметку';
-          cl.parentNode.replaceChild(b, cl); bindClear(idx);
-        }
+        var note = {text:val, date:date, ts:Date.now()};
+        photoNotes[String(idx)] = note;
+        if(notesDB){ notesDB.save(idx, note).catch(function(e){ console.warn(e); }); }
+        else { saveNotes(photoNotes); }
+        applyNote(idx, note);
       });
-      if(saved) bindClear(idx);
+
+      byId('pnote-clear-'+idx).addEventListener('click', function(){
+        delete photoNotes[String(idx)];
+        if(notesDB){ notesDB.remove(idx).catch(function(e){ console.warn(e); }); }
+        else { saveNotes(photoNotes); }
+        applyNote(idx, null);
+      });
     })(i);
   }
 
-  function bindClear(idx){
-    var el = document.getElementById('pnote-clear-'+idx);
-    if(!el) return;
-    el.addEventListener('click', function(){
-      delete photoNotes[String(idx)]; saveNotes(photoNotes);
-      var te = document.getElementById('pnote-text-'+idx);
-      te.textContent = 'Нет заметки'; te.classList.add('empty');
-      document.getElementById('pnote-date-'+idx).textContent = '';
-      document.getElementById('pnote-date-'+idx).classList.remove('visible');
-      document.getElementById('pnote-inp-'+idx).value = '';
-      var b = document.getElementById('pnote-clear-'+idx);
-      var sp = document.createElement('span'); sp.id='pnote-clear-'+idx;
-      b.parentNode.replaceChild(sp, b);
+  /* live sync: when the shared DB is ready, the server becomes the source of truth */
+  if(window.YeokieDBReady) window.YeokieDBReady.then(function(api){
+    if(!api) return;
+    notesDB = api.photoNotes;
+    notesDB.subscribe(function(map){
+      photoNotes = map || {};
+      for(var k=1;k<=PHOTOS;k++){ applyNote(k, photoNotes[String(k)] || null); }
     });
-  }
-
-  function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  });
 
   /* ── scroll reveal for cards ── */
   var io = new IntersectionObserver(function(entries){
@@ -300,6 +312,7 @@
   /* ===== СБОРНИК ===== */
   var COL_KEY='yeokie:collection:v1';
   var colItems=load(COL_KEY,[]);
+  var colDB=null;               // set once the shared DB is ready
   var colGrid=document.getElementById('colGrid'),
       colMeta=document.getElementById('colMeta'),
       colEmpty=document.getElementById('colEmpty'),
@@ -325,8 +338,8 @@
     var del=el('button','del','✕');
     del.type='button'; del.setAttribute('aria-label','Удалить из сборника');
     del.addEventListener('click',function(){
-      colItems=colItems.filter(function(x){ return x.id!==it.id; });
-      saveCol(); renderCol(); toast('Удалено из сборника');
+      if(colDB){ colDB.remove(it.id).catch(function(e){ console.warn(e); }); toast('Удалено из сборника'); }
+      else { colItems=colItems.filter(function(x){ return x.id!==it.id; }); saveCol(); renderCol(); toast('Удалено из сборника'); }
     });
     card.appendChild(media);
     card.appendChild(el('span','badge',typeNames[it.type]||'Файл'));
@@ -345,7 +358,7 @@
       visible++;
     });
     colMeta.textContent=colItems.length
-      ? colItems.length+' '+plural(colItems.length,'элемент','элемента','элементов')+' · хранится в вашем браузере'
+      ? colItems.length+' '+plural(colItems.length,'элемент','элемента','элементов')+(colDB?' · общий для всех':' · хранится в вашем браузере')
       : 'добавляйте фото · видео · гифки · мемы';
     colEmpty.textContent=colItems.length ? 'В этой категории пока ничего нет' : 'Пока пусто — добавьте первый кадр ↑';
     colEmpty.classList.toggle('show',visible===0);
@@ -380,14 +393,27 @@
     Array.prototype.forEach.call(list||[],function(f){
       var kind=fileKind(f);
       if(!kind){ toast('«'+f.name+'» — формат не поддерживается'); return; }
+      if(colDB && kind==='video'){
+        toast('Видео пока нельзя выложить в общий доступ — нужно файловое хранилище. Фото и гифки работают.');
+        return;
+      }
       var reader=new FileReader();
       reader.onload=function(){
         var commit=function(src){
-          colItems.unshift({id:uid(),type:kind,src:src,name:f.name,ts:Date.now()});
-          if(saveCol()){ renderCol(); }
-          else{
-            colItems.shift();
-            toast('«'+f.name+'» не поместился: localStorage вмещает ~5 МБ на весь сайт');
+          if(colDB){
+            if(src.length>900000){
+              toast('«'+f.name+'» великоват для общего доступа (лимит ~0.9 МБ на файл).');
+              return;
+            }
+            colDB.add({type:kind,src:src,name:f.name,ts:Date.now()})
+              .catch(function(err){ toast('Не удалось загрузить «'+f.name+'»'); console.warn(err); });
+          } else {
+            colItems.unshift({id:uid(),type:kind,src:src,name:f.name,ts:Date.now()});
+            if(saveCol()){ renderCol(); }
+            else{
+              colItems.shift();
+              toast('«'+f.name+'» не поместился: localStorage вмещает ~5 МБ на весь сайт');
+            }
           }
         };
         if(kind==='photo') shrinkImage(String(reader.result),commit);
@@ -424,6 +450,14 @@
 
   renderCol();
 
+  /* live sync: when the shared DB is ready, the server becomes the source of truth */
+  if(window.YeokieDBReady) window.YeokieDBReady.then(function(api){
+    if(!api) return;
+    colDB=api.collection;
+    colItems=[];
+    colDB.subscribe(function(arr){ colItems=arr; renderCol(); });
+  });
+
   /* ===== КОММЕНТАРИИ ===== */
   var EMOJIS=['💚','✨','😂','🔥','🥹','🌿'];
   var AVA_COLORS=['#0A5C36','#0F5132','#14452F','#0E6E41','#33A86C'];
@@ -441,8 +475,10 @@
   }
 
   function initComments(root){
-    var key='yeokie:comments:'+root.dataset.ckey;
+    var section=root.dataset.ckey;
+    var key='yeokie:comments:'+section;
     var list=load(key,[]);
+    var commentsDB=null;          // set once the shared DB is ready
 
     var head=el('h3',null,root.dataset.title||'Комментарии');
     var count=el('span','count','');
@@ -497,8 +533,8 @@
         var del=el('button','c-del','✕');
         del.type='button'; del.setAttribute('aria-label','Удалить комментарий');
         del.addEventListener('click',function(){
-          list=list.filter(function(x){ return x.id!==c.id; });
-          persist(key,list); render();
+          if(commentsDB){ commentsDB.remove(c.id).catch(function(e){ console.warn(e); }); }
+          else { list=list.filter(function(x){ return x.id!==c.id; }); persist(key,list); render(); }
         });
         item.appendChild(ava); item.appendChild(body); item.appendChild(del);
         listBox.appendChild(item);
@@ -515,17 +551,29 @@
       if(!t){ text.focus(); return; }
       var n=name.value.trim()||'Гость';
       if(name.value.trim()) persist(NAME_KEY,name.value.trim());
-      list.unshift({id:uid(),name:n,emoji:selEmoji,text:t,ts:Date.now()});
-      if(!persist(key,list)){
-        list.shift(); toast('Не удалось сохранить — хранилище переполнено');
-        return;
+      if(commentsDB){
+        commentsDB.add({section:section,name:n,emoji:selEmoji,text:t,ts:Date.now()})
+          .catch(function(err){ toast('Не удалось отправить комментарий'); console.warn(err); });
+      } else {
+        list.unshift({id:uid(),name:n,emoji:selEmoji,text:t,ts:Date.now()});
+        if(!persist(key,list)){
+          list.shift(); toast('Не удалось сохранить — хранилище переполнено');
+          return;
+        }
+        render();
       }
       text.value=''; selEmoji='';
       emo.querySelectorAll('button').forEach(function(x){ x.classList.remove('sel'); });
-      render();
     });
 
     render();
+
+    /* live sync: server becomes the source of truth for this section */
+    if(window.YeokieDBReady) window.YeokieDBReady.then(function(api){
+      if(!api) return;
+      commentsDB=api.comments;
+      commentsDB.subscribe(section, function(arr){ list=arr; render(); });
+    });
   }
   document.querySelectorAll('.comments').forEach(initComments);
 
