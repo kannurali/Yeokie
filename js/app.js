@@ -579,11 +579,13 @@
 
   /* ===== МУЗЫКА ===== */
   var MUSIC_KEY='yeokie:music:v1';
-  var musicItems = load(MUSIC_KEY, [
-    {id:'default1', title:'Melt', artist:'Hoshimachi Suisei', vibe:'уютное', emoji:'🌙'},
-    {id:'default2', title:'Say Something', artist:'A Great Big World', vibe:'грустное', emoji:'🌿'},
-    {id:'default3', title:'Blinding Lights', artist:'The Weeknd', vibe:'ночное', emoji:'🌃'}
-  ]);
+  var musicItems = load(MUSIC_KEY, []);
+  /* drop the old placeholder tracks that used to ship as defaults */
+  var OLD_DEFAULT_IDS = ['default1','default2','default3'];
+  if(musicItems.some(function(t){ return OLD_DEFAULT_IDS.indexOf(t.id)!==-1; })){
+    musicItems = musicItems.filter(function(t){ return OLD_DEFAULT_IDS.indexOf(t.id)===-1; });
+    persist(MUSIC_KEY, musicItems);
+  }
 
   /* real, playable tracks bundled with the site (audio + cover in assets/music) */
   var LIBRARY = [
