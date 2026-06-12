@@ -832,14 +832,14 @@
     }).then(function(r){ return r.ok; }).catch(function(){ return false; });
   }
 
-  /* song that auto-plays on «Да» — the music from Reel 02 (a hidden video element,
-     so only its audio is heard). Loops as a celebration track. */
+  /* song that auto-plays on «Да» — a hidden video element, so only its audio is
+     heard. Loops as a celebration track. */
   var dateSong = null;
   function playDateSong(){
     try{
       if(!dateSong){
         dateSong = document.createElement('video');
-        dateSong.src = 'assets/videos/video-02.mp4';
+        dateSong.src = 'assets/music/date-song.mp4';
         dateSong.loop = true;
         dateSong.playsInline = true;
         dateSong.setAttribute('aria-hidden','true');
