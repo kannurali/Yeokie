@@ -54,6 +54,7 @@
       applyNote(idx, photoNotes[String(idx)] || null);
 
       byId('pnote-save-'+idx).addEventListener('click', function(){
+        if(window.YeokieAccess && !window.YeokieAccess.isEditor()){ return; }   // заметки — только владельцам
         var val = byId('pnote-inp-'+idx).value.trim();
         if(!val){ return; }
         var date = new Date().toLocaleDateString('ru-RU',{day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'});
@@ -65,6 +66,7 @@
       });
 
       byId('pnote-clear-'+idx).addEventListener('click', function(){
+        if(window.YeokieAccess && !window.YeokieAccess.isEditor()){ return; }   // заметки — только владельцам
         delete photoNotes[String(idx)];
         if(notesDB){ notesDB.remove(idx).catch(function(e){ console.warn(e); }); }
         else { saveNotes(photoNotes); }

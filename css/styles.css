@@ -787,12 +787,16 @@ body.is-editor .hotbar__lock{
 body.is-editor .access-pop [data-when="editor"]{display:block}
 body.is-editor .access-pop [data-when="locked"]{display:none}
 
-/* прячем владельческое управление, пока код не введён */
+/* прячем владельческое управление, пока код не введён.
+   .photo-card__input-row / .photo-card__clear — поле и кнопки заметки под фото:
+   текст заметки гости видят, но писать и удалять может только владелец. */
 body:not(.is-editor) #dropzone,
 body:not(.is-editor) #musicAddBtn,
 body:not(.is-editor) #musicForm,
 body:not(.is-editor) .col-item .del,
-body:not(.is-editor) .music-del{display:none !important}
+body:not(.is-editor) .music-del,
+body:not(.is-editor) .photo-card__input-row,
+body:not(.is-editor) .photo-card__clear{display:none !important}
 
 /* вкладка «Свидание» — только для админов (кто вошёл по коду) */
 body:not(.is-editor) .htab[data-tab="date"]{display:none !important}
