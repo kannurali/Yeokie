@@ -728,3 +728,83 @@ button.btn{cursor:pointer;font-family:var(--sans);background:transparent;color:v
 @media(max-width:560px){
   .nav-links{gap:.95rem;letter-spacing:.1em;font-size:.78rem}
 }
+
+/* ---------- ДОСТУП / РЕЖИМ ВЛАДЕЛЬЦА ---------- */
+@keyframes accessIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+
+.hotbar__lock{
+  flex-shrink:0;margin-left:.4rem;position:relative;z-index:2;
+  width:2.1rem;height:2.1rem;border-radius:8px;
+  border:1px solid var(--line);background:rgba(180,214,193,.05);
+  color:var(--muted);cursor:pointer;display:grid;place-items:center;
+  transition:color .2s,background .2s,border-color .2s;
+}
+.hotbar__lock:hover{color:var(--ink);background:rgba(180,214,193,.1)}
+.hotbar__lock svg{width:1rem;height:1rem;display:block}
+/* подсвечиваем замок зелёным, когда режим владельца включён */
+body.is-editor .hotbar__lock{
+  color:var(--accent);border-color:rgba(51,168,108,.5);background:rgba(51,168,108,.14);
+}
+
+.access-pop{
+  position:fixed;top:62px;right:clamp(.6rem,3vw,1.6rem);z-index:140;
+  width:min(310px,92vw);
+  background:rgba(9,18,13,.97);backdrop-filter:blur(16px) saturate(160%);
+  border:1px solid var(--line);border-radius:16px;
+  padding:1.1rem 1.2rem;box-shadow:var(--shadow);
+  animation:accessIn .22s ease;
+}
+.access-pop[hidden]{display:none}
+.access-pop__title{font-family:var(--serif);font-weight:600;font-size:1.2rem;margin-bottom:.3rem}
+.access-pop__sub{color:var(--muted);font-size:.8rem;margin:0 0 .9rem;line-height:1.5}
+.access-pop__form{display:flex;gap:.5rem}
+.access-pop__form input{
+  flex:1;min-width:0;background:rgba(12,23,18,.7);border:1px solid var(--line);
+  border-radius:10px;color:var(--ink);font-family:var(--sans);font-size:.9rem;
+  padding:.55rem .8rem;outline:none;transition:border-color .2s;
+}
+.access-pop__form input:focus{border-color:var(--accent)}
+.access-pop__form input::placeholder{color:rgba(157,181,166,.5)}
+.access-pop__form button{
+  flex-shrink:0;padding:.55rem 1rem;border-radius:10px;border:none;cursor:pointer;
+  background:var(--g1);color:#EAF2EC;font-family:var(--sans);font-weight:600;
+  font-size:.8rem;transition:background .2s;
+}
+.access-pop__form button:hover{background:#0E6E41}
+.access-pop__err{color:#e8a0a0;font-size:.78rem;margin-top:.55rem}
+.access-pop__err[hidden]{display:none}
+.access-pop__signout{display:flex;align-items:center;justify-content:space-between;gap:.8rem}
+.access-pop__signout span{color:var(--accent);font-size:.8rem;font-weight:600}
+.access-pop__signout button{
+  padding:.5rem .9rem;border-radius:10px;border:1px solid var(--line);background:transparent;
+  color:var(--muted);font-family:var(--sans);font-size:.78rem;cursor:pointer;
+  transition:color .2s,border-color .2s;
+}
+.access-pop__signout button:hover{color:var(--ink);border-color:rgba(180,214,193,.4)}
+/* показываем нужную секцию окна в зависимости от режима */
+.access-pop [data-when="editor"]{display:none}
+.access-pop [data-when="locked"]{display:block}
+body.is-editor .access-pop [data-when="editor"]{display:block}
+body.is-editor .access-pop [data-when="locked"]{display:none}
+
+/* прячем владельческое управление, пока код не введён */
+body:not(.is-editor) #dropzone,
+body:not(.is-editor) #musicAddBtn,
+body:not(.is-editor) #musicForm,
+body:not(.is-editor) .col-item .del,
+body:not(.is-editor) .music-del{display:none !important}
+
+/* мягкая подсказка вместо кнопок добавления */
+.locked-note{
+  display:none;align-items:center;justify-content:center;gap:.7rem;flex-wrap:wrap;
+  border:1.5px dashed rgba(180,214,193,.22);border-radius:18px;
+  background:rgba(21,35,28,.4);color:var(--muted);
+  padding:1.3rem 1.5rem;font-size:.86rem;text-align:center;line-height:1.5;
+}
+body:not(.is-editor) .locked-note{display:flex}
+.locked-note svg{width:1.1rem;height:1.1rem;flex-shrink:0;color:var(--accent)}
+.locked-note button{
+  background:none;border:none;color:var(--accent);cursor:pointer;
+  font-family:var(--sans);font-size:.86rem;font-weight:600;text-decoration:underline;padding:0;
+}
+.locked-note button:hover{color:var(--ink)}

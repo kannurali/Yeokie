@@ -338,6 +338,7 @@
     var del=el('button','del','✕');
     del.type='button'; del.setAttribute('aria-label','Удалить из сборника');
     del.addEventListener('click',function(){
+      if(window.YeokieAccess && !window.YeokieAccess.isEditor()){ toast('Удалять может только владелец'); return; }
       if(colDB){ colDB.remove(it.id).catch(function(e){ console.warn(e); }); toast('Удалено из сборника'); }
       else { colItems=colItems.filter(function(x){ return x.id!==it.id; }); saveCol(); renderCol(); toast('Удалено из сборника'); }
     });
@@ -390,6 +391,7 @@
   }
 
   function addFiles(list){
+    if(window.YeokieAccess && !window.YeokieAccess.isEditor()){ toast('Добавлять может только владелец — введите код доступа'); return; }
     Array.prototype.forEach.call(list||[],function(f){
       var kind=fileKind(f);
       if(!kind){ toast('«'+f.name+'» — формат не поддерживается'); return; }
@@ -643,6 +645,7 @@
       '</div>'+
       '<button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.9rem;opacity:0;transition:opacity .2s;padding:.3rem" class="music-del" data-id="'+track.id+'" title="Удалить">✕</button>';
     card.querySelector('.music-del').addEventListener('click', function(){
+      if(window.YeokieAccess && !window.YeokieAccess.isEditor()){ toast('Удалять может только владелец'); return; }
       musicItems = musicItems.filter(function(t){ return t.id !== track.id; });
       persist(MUSIC_KEY, musicItems);
       renderMusic();
@@ -662,6 +665,7 @@
     musicForm.classList.remove('open');
   });
   musicFormSave.addEventListener('click', function(){
+    if(window.YeokieAccess && !window.YeokieAccess.isEditor()){ toast('Добавлять музыку может только владелец'); return; }
     var title = document.getElementById('mfTitle').value.trim();
     var artist = document.getElementById('mfArtist').value.trim();
     if(!title){ document.getElementById('mfTitle').focus(); return; }
@@ -833,14 +837,14 @@
   }
 
   /* song that auto-plays on «Да» — a hidden video element, so only its audio is
-     heard. Loops as a celebration track. */
+     heard. Plays once (no loop). */
   var dateSong = null;
   function playDateSong(){
     try{
       if(!dateSong){
         dateSong = document.createElement('video');
         dateSong.src = 'assets/music/date-song.mp4';
-        dateSong.loop = true;
+        dateSong.loop = false;   // играет один раз, без повтора
         dateSong.playsInline = true;
         dateSong.setAttribute('aria-hidden','true');
         dateSong.style.cssText = 'position:absolute;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none';
