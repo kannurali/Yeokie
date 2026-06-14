@@ -794,6 +794,9 @@ body:not(.is-editor) #musicForm,
 body:not(.is-editor) .col-item .del,
 body:not(.is-editor) .music-del{display:none !important}
 
+/* вкладка «Свидание» — только для админов (кто вошёл по коду) */
+body:not(.is-editor) .htab[data-tab="date"]{display:none !important}
+
 /* мягкая подсказка вместо кнопок добавления */
 .locked-note{
   display:none;align-items:center;justify-content:center;gap:.7rem;flex-wrap:wrap;
