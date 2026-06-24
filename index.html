@@ -28,6 +28,9 @@
     <button class="htab" data-tab="date" role="tab">
       <span class="htab-icon">💚</span> Свидание
     </button>
+    <button class="htab" data-tab="nurri" role="tab">
+      <span class="htab-icon">🍂</span> Нурри
+    </button>
   </div>
 </nav>
 
@@ -172,6 +175,44 @@
     </section>
   </div>
 
+  <div class="tab-panel" id="tab-nurri" role="tabpanel">
+    <section class="section" id="nurri">
+      <div class="nurri-leaves" id="nurriLeaves" aria-hidden="true"></div>
+      <div class="wrap">
+        <div class="nurri-hero">
+          <div class="eyebrow">Осень · письма</div>
+          <h2 class="nurri-title">Нурри</h2>
+          <p class="nurri-sub">Запечатанные письма. Нажми на конверт — сломай печать, вытащи и прочти.</p>
+        </div>
+
+        <div class="letter-actions">
+          <button class="btn primary" id="letterAddBtn" type="button">✍ Написать письмо</button>
+        </div>
+
+        <form class="letter-form" id="letterForm">
+          <div class="letter-form__row">
+            <input type="text" id="lfTo" placeholder="Кому" maxlength="60" autocomplete="off">
+            <input type="text" id="lfFrom" placeholder="От кого" maxlength="60" autocomplete="off">
+          </div>
+          <input type="text" id="lfTitle" placeholder="Заголовок (необязательно)" maxlength="80" autocomplete="off">
+          <textarea id="lfBody" placeholder="Текст письма…" rows="6" maxlength="4000"></textarea>
+          <div class="letter-form__actions">
+            <button class="letter-form__cancel" id="letterFormCancel" type="button">Отмена</button>
+            <button class="letter-form__save" id="letterFormSave" type="button">Запечатать 🔴</button>
+          </div>
+        </form>
+
+        <div class="env-grid" id="envGrid"></div>
+        <div class="env-empty" id="envEmpty">Пока нет писем — напиши первое ✍</div>
+      </div>
+    </section>
+  </div>
+
+</div>
+
+<div class="letter-lb" id="letterLb" aria-hidden="true">
+  <button class="letter-lb__close" id="letterClose" type="button" aria-label="Закрыть письмо">✕</button>
+  <div class="env-open-wrap" id="envOpenWrap"></div>
 </div>
 
 <div class="lb" id="lb" aria-hidden="true">

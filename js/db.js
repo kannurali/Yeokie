@@ -61,6 +61,19 @@
           },
           add:    function(item){ return addDoc(col(db,'collection'), item); },
           remove: function(id){ return deleteDoc(doc(db,'collection', id)); }
+        },
+
+        /* letters (Нурри — конверты) — newest first; shared among password-holders */
+        letters: {
+          subscribe: function(cb){
+            return onSnapshot(query(col(db,'letters'), orderBy('ts','desc')), function(snap){
+              var arr = [];
+              snap.forEach(function(d){ var v = d.data(); v.id = d.id; arr.push(v); });
+              cb(arr);
+            }, function(err){ console.warn('[Yeokie] letters listen error', err); });
+          },
+          add:    function(item){ return addDoc(col(db,'letters'), item); },
+          remove: function(id){ return deleteDoc(doc(db,'letters', id)); }
         }
       };
     }catch(e){

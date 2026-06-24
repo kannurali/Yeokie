@@ -246,6 +246,8 @@
       document.querySelectorAll('.tab-panel').forEach(function(p){ p.classList.remove('active'); });
       var panel = document.getElementById('tab-'+target);
       if(panel) panel.classList.add('active');
+      /* лето → осень: на странице «Нурри» вся палитра становится тёплой */
+      document.body.classList.toggle('theme-autumn', target === 'nurri');
       window.scrollTo(0,0);
     });
   });
@@ -781,6 +783,149 @@
   });
 
   renderMusic();
+
+  /* ===== НУРРИ — КОНВЕРТЫ / ПИСЬМА ===== */
+  /* Письма видны и доступны только тем, кто вошёл по коду (вкладка скрыта для
+     гостей в CSS). Любой, кто знает код, может писать, открывать и удалять. */
+  var LETTERS_KEY='yeokie:letters:v1';
+  var letters=load(LETTERS_KEY,[]);
+  var lettersDB=null;                // set once the shared DB is ready
+  var envGrid=document.getElementById('envGrid'),
+      envEmpty=document.getElementById('envEmpty'),
+      letterForm=document.getElementById('letterForm'),
+      letterAddBtn=document.getElementById('letterAddBtn'),
+      letterCancel=document.getElementById('letterFormCancel'),
+      letterSave=document.getElementById('letterFormSave'),
+      letterLb=document.getElementById('letterLb'),
+      letterClose=document.getElementById('letterClose'),
+      envOpenWrap=document.getElementById('envOpenWrap');
+
+  function isEd(){ return !(window.YeokieAccess && !window.YeokieAccess.isEditor()); }
+  function saveLetters(){ return persist(LETTERS_KEY, letters); }
+  function initialOf(s){ s=String(s||'').trim(); return s ? s.charAt(0).toUpperCase() : 'Н'; }
+
+  function envCard(L){
+    var card=el('figure','env-card');
+    card.dataset.id=L.id;
+    card.tabIndex=0;
+    card.setAttribute('role','button');
+    card.setAttribute('aria-label','Открыть письмо');
+    card.innerHTML=
+      '<span class="env-card__stamp">🍁</span>'+
+      '<span class="env-card__pocket"></span>'+
+      '<span class="env-card__flap"></span>'+
+      '<span class="env-card__seal">'+esc2(initialOf(L.from))+'</span>'+
+      '<span class="env-card__addr"><b>Кому</b>'+esc2(L.to||'тебе')+'</span>'+
+      '<span class="env-card__hint">нажми, чтобы открыть</span>'+
+      '<button class="env-card__del" type="button" aria-label="Удалить письмо">✕</button>';
+    card.querySelector('.env-card__del').addEventListener('click',function(e){
+      e.stopPropagation();
+      if(!isEd()){ toast('Удалять может только владелец'); return; }
+      if(lettersDB){ lettersDB.remove(L.id).catch(function(err){ console.warn(err); }); toast('Письмо удалено'); }
+      else { letters=letters.filter(function(x){ return x.id!==L.id; }); saveLetters(); renderLetters(); toast('Письмо удалено'); }
+    });
+    card.addEventListener('click',function(){ openLetter(L); });
+    card.addEventListener('keydown',function(e){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openLetter(L); } });
+    return card;
+  }
+
+  function renderLetters(){
+    envGrid.innerHTML='';
+    letters.forEach(function(L){ envGrid.appendChild(envCard(L)); });
+    envEmpty.classList.toggle('show', letters.length===0);
+  }
+
+  /* открыть письмо: печать ломается → клапан откидывается → лист выезжает и читается */
+  function openLetter(L){
+    var bodyHTML=esc2(L.body||'').replace(/\n/g,'<br>');
+    var title=L.title ? '<div class="paper__title">'+esc2(L.title)+'</div>' : '';
+    var greet=L.to ? '<div class="paper__to">'+esc2(L.to)+',</div>' : '';
+    var sign=L.from ? '<div class="paper__sign">— '+esc2(L.from)+'</div>' : '';
+    envOpenWrap.innerHTML=
+      '<div class="env-open">'+
+        '<div class="env-open__back"></div>'+
+        '<div class="env-open__paper"><div class="paper">'+
+          title+greet+'<div class="paper__body">'+bodyHTML+'</div>'+sign+
+        '</div></div>'+
+        '<div class="env-open__pocket"></div>'+
+        '<div class="env-open__flap"></div>'+
+        '<div class="env-open__seal">'+esc2(initialOf(L.from))+'</div>'+
+      '</div>';
+    var env=envOpenWrap.querySelector('.env-open');
+    letterLb.classList.add('open');
+    letterLb.setAttribute('aria-hidden','false');
+    document.body.style.overflow='hidden';
+    void env.offsetWidth;                                   // force reflow → transitions run
+    setTimeout(function(){ env.classList.add('unsealed'); }, 240);   // печать ломается, клапан вверх
+    setTimeout(function(){ env.classList.add('out'); }, 1080);       // лист выезжает и раскрывается
+  }
+
+  function closeLetter(){
+    letterLb.classList.remove('open');
+    letterLb.setAttribute('aria-hidden','true');
+    document.body.style.overflow='';
+    setTimeout(function(){ envOpenWrap.innerHTML=''; }, 320);
+  }
+  letterClose.addEventListener('click', closeLetter);
+  letterLb.addEventListener('click', function(e){ if(e.target===letterLb) closeLetter(); });
+  document.addEventListener('keydown', function(e){
+    if(e.key==='Escape' && letterLb.classList.contains('open')) closeLetter();
+  });
+
+  /* написать письмо (только для вошедших по коду) */
+  letterAddBtn.addEventListener('click', function(){
+    if(!isEd()){ toast('Писать письма может только тот, кто вошёл по коду'); return; }
+    letterForm.classList.add('open');
+    document.getElementById('lfBody').focus();
+  });
+  letterCancel.addEventListener('click', function(){ letterForm.classList.remove('open'); });
+  letterSave.addEventListener('click', function(){
+    if(!isEd()){ toast('Писать письма может только тот, кто вошёл по коду'); return; }
+    var to=document.getElementById('lfTo').value.trim();
+    var from=document.getElementById('lfFrom').value.trim();
+    var title=document.getElementById('lfTitle').value.trim();
+    var bodyv=document.getElementById('lfBody').value.trim();
+    if(!bodyv){ document.getElementById('lfBody').focus(); toast('Напиши текст письма'); return; }
+    var item={ to:to, from:from, title:title, body:bodyv, ts:Date.now() };
+    if(lettersDB){
+      lettersDB.add(item).then(function(){ toast('Письмо запечатано 🔴'); })
+        .catch(function(err){ toast('Не удалось сохранить письмо'); console.warn(err); });
+    } else {
+      item.id=uid(); letters.unshift(item);
+      if(saveLetters()){ renderLetters(); toast('Письмо запечатано 🔴'); }
+      else { letters.shift(); toast('Не удалось сохранить — хранилище переполнено'); return; }
+    }
+    letterForm.classList.remove('open');
+    ['lfTo','lfFrom','lfTitle','lfBody'].forEach(function(id){ document.getElementById(id).value=''; });
+  });
+
+  renderLetters();
+
+  /* live sync: server becomes the source of truth for letters */
+  if(window.YeokieDBReady) window.YeokieDBReady.then(function(api){
+    if(!api) return;
+    lettersDB=api.letters;
+    letters=[];
+    lettersDB.subscribe(function(arr){ letters=arr; renderLetters(); });
+  });
+
+  /* листья, падающие в фоне страницы «Нурри» */
+  var leavesBox=document.getElementById('nurriLeaves');
+  if(leavesBox && !matchMedia('(prefers-reduced-motion: reduce)').matches){
+    var LEAF=['🍂','🍁','🍃'];
+    for(var li=0; li<14; li++){
+      var lf=document.createElement('span');
+      lf.className='leaf';
+      lf.textContent=LEAF[li%LEAF.length];
+      lf.style.left=(Math.random()*100).toFixed(2)+'%';
+      lf.style.fontSize=(0.9+Math.random()*1.3).toFixed(2)+'rem';
+      lf.style.setProperty('--lx', ((Math.random()*2-1)*60).toFixed(0)+'px');
+      lf.style.setProperty('--lr', ((Math.random()*2-1)*220).toFixed(0)+'deg');
+      lf.style.animationDuration=(8+Math.random()*8).toFixed(1)+'s';
+      lf.style.animationDelay=(-Math.random()*12).toFixed(1)+'s';
+      leavesBox.appendChild(lf);
+    }
+  }
 
   /* ===== СВИДАНИЕ ===== */
   var btnYes=document.getElementById('btnYes'),

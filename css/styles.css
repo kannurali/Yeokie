@@ -29,6 +29,7 @@ body{
   line-height:1.6;
   -webkit-font-smoothing:antialiased;
   overflow-x:hidden;
+  transition:background-color .6s ease;
 }
 /* soft organic background wash */
 body::before{
@@ -815,3 +816,256 @@ body:not(.is-editor) .locked-note{display:flex}
   font-family:var(--sans);font-size:.86rem;font-weight:600;text-decoration:underline;padding:0;
 }
 .locked-note button:hover{color:var(--ink)}
+
+/* ======================================================================
+   НУРРИ — осенняя страница с конвертами/письмами
+   ====================================================================== */
+
+/* вкладка скрыта для тех, кто не вошёл по коду */
+body:not(.is-editor) .htab[data-tab="nurri"]{display:none !important}
+
+/* ---------- ОСЕННЯЯ ПАЛИТРА (лето → осень) ---------- */
+/* активна, только пока открыта страница «Нурри» — переопределяем переменные,
+   и почти весь интерфейс перекрашивается в тёплые тона автоматически. */
+body.theme-autumn{
+  --g1:#A8301C;  --g2:#8E2A1C;  --g3:#6E2417;  --g4:#3D2126;  --g5:#2A1418;
+  --bg:#1A0E0B;          /* deep warm base */
+  --bg-2:#2A1714;        /* warm surface */
+  --ink:#F6E9DD;         /* warm light text */
+  --muted:#C9A88F;       /* muted tan */
+  --accent:#E8772E;      /* burnt orange accent */
+  --line:rgba(232,180,140,.16);
+}
+body.theme-autumn::before{
+  background:
+    radial-gradient(120% 80% at 12% -10%, rgba(244,162,89,.30), transparent 60%),
+    radial-gradient(120% 90% at 100% 0%, rgba(168,48,28,.42), transparent 55%),
+    radial-gradient(140% 120% at 50% 120%, rgba(110,36,23,.40), transparent 60%),
+    var(--bg);
+}
+body.theme-autumn .hotbar{background:rgba(26,14,11,.88)}
+body.theme-autumn .hotbar__brand .dot{background:var(--accent);box-shadow:0 0 0 3px rgba(233,122,48,.22)}
+body.theme-autumn .htab.active{color:var(--ink);background:rgba(233,122,48,.14)}
+body.theme-autumn .htab.active::after{background:var(--accent)}
+/* снег в шапке превращается в тёплые искры/угольки */
+body.theme-autumn .snowflake{
+  background:radial-gradient(circle at 32% 30%, #F4A259, rgba(233,122,48,.55) 60%, rgba(233,122,48,0) 72%);
+  box-shadow:0 0 6px rgba(233,122,48,.55);
+}
+/* кнопка-«первичная» в осенней палитре */
+body.theme-autumn .btn.primary{
+  background:linear-gradient(135deg,#E8772E 0%,#F4A259 55%,#C0501F 100%);
+  box-shadow:0 8px 22px -10px rgba(233,122,48,.6), inset 0 1px 0 rgba(255,255,255,.2);
+}
+body.theme-autumn .btn.primary:hover{box-shadow:0 14px 28px -10px rgba(233,122,48,.72), inset 0 1px 0 rgba(255,255,255,.2)}
+body.theme-autumn .hotbar__lock:hover{background:rgba(233,122,48,.12)}
+body.theme-autumn.is-editor .hotbar__lock{color:var(--accent);border-color:rgba(233,122,48,.5);background:rgba(233,122,48,.14)}
+
+/* ---------- ПАДАЮЩИЕ ЛИСТЬЯ (фон страницы) ---------- */
+#nurri{position:relative;overflow:hidden}
+.nurri-leaves{position:absolute;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.leaf{
+  position:absolute;top:-10%;line-height:1;
+  will-change:transform;opacity:.85;
+  filter:drop-shadow(0 4px 5px rgba(0,0,0,.3));
+  animation-name:leafFall;animation-timing-function:linear;animation-iteration-count:infinite;
+}
+@keyframes leafFall{
+  0%   {transform:translate3d(0,-10vh,0) rotate(0)}
+  100% {transform:translate3d(var(--lx,0),118vh,0) rotate(var(--lr,180deg))}
+}
+@media (prefers-reduced-motion: reduce){ .leaf{display:none} }
+#nurri .wrap{position:relative;z-index:1}
+
+/* ---------- ШАПКА СТРАНИЦЫ ---------- */
+.nurri-hero{text-align:center;padding:clamp(1.4rem,4vw,2.6rem) 0 clamp(1.1rem,3vw,1.9rem)}
+.nurri-hero .eyebrow{font-size:.72rem;letter-spacing:.34em;text-transform:uppercase;color:var(--accent);font-weight:600}
+.nurri-title{font-family:var(--serif);font-weight:600;font-size:clamp(2.6rem,7vw,4.4rem);margin:.4rem 0 .5rem;line-height:1}
+.nurri-sub{color:var(--muted);font-size:.96rem;margin:0 auto;max-width:42ch}
+.letter-actions{display:flex;justify-content:center;margin-bottom:1.4rem}
+
+/* ---------- ФОРМА «НАПИСАТЬ ПИСЬМО» ---------- */
+.letter-form{
+  max-width:560px;margin:0 auto 2.4rem;display:none;flex-direction:column;gap:.8rem;
+  background:var(--bg-2);border:1px solid var(--line);border-radius:18px;padding:1.3rem;
+}
+.letter-form.open{display:flex;animation:tabIn .25s ease both}
+.letter-form input,.letter-form textarea{
+  background:rgba(20,10,8,.5);border:1px solid var(--line);border-radius:10px;
+  color:var(--ink);font-family:var(--sans);font-size:.92rem;padding:.65rem .9rem;outline:none;
+  transition:border-color .2s;width:100%;
+}
+.letter-form textarea{resize:vertical;min-height:7rem;line-height:1.6;font-family:"Cormorant Garamond",Georgia,serif;font-size:1.05rem}
+.letter-form input:focus,.letter-form textarea:focus{border-color:var(--accent)}
+.letter-form input::placeholder,.letter-form textarea::placeholder{color:rgba(201,168,143,.5)}
+.letter-form__row{display:grid;grid-template-columns:1fr 1fr;gap:.8rem}
+.letter-form__actions{display:flex;gap:.6rem;justify-content:flex-end}
+.letter-form__save{
+  padding:.6rem 1.5rem;border-radius:999px;border:none;cursor:pointer;
+  background:linear-gradient(135deg,#C0392B,#8E2A1C);color:#FBE9DD;
+  font-family:var(--sans);font-weight:600;font-size:.82rem;letter-spacing:.05em;
+  transition:filter .2s,transform .2s;
+}
+.letter-form__save:hover{filter:brightness(1.08);transform:translateY(-1px)}
+.letter-form__cancel{
+  padding:.6rem 1.3rem;border-radius:999px;border:1px solid var(--line);background:transparent;
+  color:var(--muted);font-family:var(--sans);font-size:.82rem;cursor:pointer;transition:color .2s;
+}
+.letter-form__cancel:hover{color:var(--ink)}
+@media(max-width:560px){.letter-form__row{grid-template-columns:1fr}}
+
+/* ---------- СЕТКА КОНВЕРТОВ ---------- */
+.env-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:1.7rem;padding:.4rem 0 1rem}
+.env-empty{display:none;text-align:center;color:var(--muted);font-size:.95rem;padding:2.6rem 0}
+.env-empty.show{display:block}
+
+/* ---------- ЗАКРЫТЫЙ КОНВЕРТ (карточка) — алый, запечатанный ---------- */
+.env-card{
+  position:relative;margin:0;cursor:pointer;border-radius:13px;
+  aspect-ratio:7/4.6;perspective:700px;isolation:isolate;overflow:hidden;
+  background:linear-gradient(135deg,#B83426,#7E2014);
+  box-shadow:0 18px 38px -20px rgba(0,0,0,.85), inset 0 0 0 1px rgba(255,220,200,.07);
+  transition:transform .35s cubic-bezier(.34,1.56,.64,1), box-shadow .35s;
+}
+.env-card:hover{transform:translateY(-6px);box-shadow:0 30px 54px -22px rgba(0,0,0,.95)}
+.env-card:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+/* диагональные швы переднего кармана */
+.env-card::after{
+  content:"";position:absolute;inset:0;z-index:1;pointer-events:none;
+  background:
+    linear-gradient(to top right, transparent calc(50% - .8px), rgba(0,0,0,.20) 50%, transparent calc(50% + .8px)) bottom left/50% 72% no-repeat,
+    linear-gradient(to top left,  transparent calc(50% - .8px), rgba(0,0,0,.20) 50%, transparent calc(50% + .8px)) bottom right/50% 72% no-repeat;
+}
+.env-card__pocket{position:absolute;left:0;right:0;bottom:0;height:64%;z-index:1;background:linear-gradient(180deg,transparent,rgba(0,0,0,.20))}
+.env-card__flap{
+  position:absolute;left:0;right:0;top:0;height:56%;z-index:3;transform-origin:top center;
+  background:linear-gradient(160deg,#CB3D2A,#9A2818);
+  clip-path:polygon(0 0,100% 0,50% 100%);
+  box-shadow:0 6px 9px -6px rgba(0,0,0,.5);
+  transition:transform .5s cubic-bezier(.4,0,.2,1);
+}
+.env-card:hover .env-card__flap{transform:rotateX(32deg)}
+.env-card__stamp{
+  position:absolute;top:.55rem;right:.6rem;z-index:4;
+  width:1.7rem;height:2rem;border-radius:3px;display:grid;place-items:center;font-size:.95rem;
+  background:rgba(255,243,230,.92);border:1.5px dashed rgba(150,50,32,.55);
+  box-shadow:0 2px 5px rgba(0,0,0,.35);
+}
+.env-card__seal{
+  position:absolute;left:50%;top:53%;transform:translate(-50%,-50%);z-index:5;
+  width:2.9rem;height:2.9rem;border-radius:50%;display:grid;place-items:center;
+  font-family:var(--serif);font-weight:600;font-size:1.2rem;color:#FBE3D6;
+  background:radial-gradient(circle at 38% 32%,#E0533C,#9E2415 70%);
+  box-shadow:0 4px 10px -3px rgba(0,0,0,.6), inset 0 2px 4px rgba(255,200,180,.45), inset 0 -3px 6px rgba(0,0,0,.4);
+  text-shadow:0 1px 1px rgba(0,0,0,.4);
+}
+.env-card__seal::before{content:"";position:absolute;inset:5px;border-radius:50%;border:1px dashed rgba(255,220,205,.5)}
+.env-card__addr{
+  position:absolute;left:.95rem;bottom:.8rem;z-index:4;display:flex;flex-direction:column;gap:.04rem;
+  color:#FCEDE2;font-family:"Cormorant Garamond",Georgia,serif;font-style:italic;font-size:1.05rem;
+  text-shadow:0 1px 2px rgba(0,0,0,.45);max-width:62%;
+}
+.env-card__addr b{
+  font-style:normal;font-family:var(--sans);font-weight:600;
+  font-size:.55rem;letter-spacing:.24em;text-transform:uppercase;color:rgba(255,225,210,.7);
+}
+.env-card__hint{
+  position:absolute;right:.75rem;bottom:.8rem;z-index:4;
+  font-family:var(--sans);font-size:.58rem;letter-spacing:.14em;text-transform:uppercase;
+  color:rgba(255,225,210,0);transition:color .3s;
+}
+.env-card:hover .env-card__hint{color:rgba(255,225,210,.8)}
+.env-card__del{
+  position:absolute;top:.5rem;left:.5rem;z-index:6;
+  width:1.9rem;height:1.9rem;border-radius:50%;border:none;cursor:pointer;
+  background:rgba(20,8,6,.5);backdrop-filter:blur(4px);color:#FBE3D6;
+  display:grid;place-items:center;font-size:.85rem;opacity:0;transform:scale(.85);
+  transition:opacity .25s,transform .25s,background .2s;
+}
+.env-card:hover .env-card__del{opacity:1;transform:none}
+.env-card__del:hover{background:rgba(160,34,22,.92)}
+body:not(.is-editor) .env-card__del{display:none}
+
+/* ---------- МОДАЛКА: ОТКРЫТИЕ ПИСЬМА ---------- */
+.letter-lb{
+  position:fixed;inset:0;z-index:150;display:none;align-items:center;justify-content:center;
+  padding:1.6rem;overflow:auto;
+  background:radial-gradient(ellipse at 50% 26%, rgba(70,28,20,.86), rgba(14,7,5,.97));
+  -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
+}
+.letter-lb.open{display:flex}
+.letter-lb__close{
+  position:fixed;top:1rem;right:1.1rem;z-index:10;
+  width:2.6rem;height:2.6rem;border-radius:50%;border:1px solid rgba(255,220,200,.25);
+  background:rgba(20,10,8,.5);color:#F6E9DD;cursor:pointer;font-size:1.1rem;
+  display:grid;place-items:center;transition:background .2s,transform .2s;
+}
+.letter-lb__close:hover{background:rgba(160,48,28,.7);transform:scale(1.06)}
+.env-open-wrap{display:grid;place-items:center;width:100%}
+
+/* собственно конверт в модалке (3D) */
+.env-open{
+  position:relative;perspective:1400px;
+  width:min(440px,88vw);height:min(316px,58vw);
+  transition:transform .8s cubic-bezier(.4,0,.2,1);
+}
+.env-open.out{transform:translateY(16%)}
+.env-open__back{
+  position:absolute;inset:0;z-index:1;border-radius:12px;
+  background:linear-gradient(135deg,#9E2A1B,#6A1A10);
+  box-shadow:0 34px 74px -28px rgba(0,0,0,.9);
+  transition:filter .6s;
+}
+/* письмо — выезжает вверх и увеличивается для чтения */
+.env-open__paper{
+  position:absolute;left:7%;right:7%;top:7%;bottom:7%;z-index:2;
+  transform:translateY(0);
+  transition:transform 1s cubic-bezier(.33,1,.68,1) .15s;
+}
+.env-open.out .env-open__paper{transform:translateY(-68%) scale(1.14);z-index:7}
+.paper{
+  width:100%;height:100%;overflow:auto;border-radius:5px;
+  background:
+    repeating-linear-gradient(transparent 0 30px, rgba(120,70,40,.10) 30px 31px),
+    linear-gradient(#FBF3E4,#F2E4CC);
+  color:#3A2417;text-align:left;
+  font-family:"Cormorant Garamond",Georgia,serif;
+  padding:1.35rem 1.5rem 1.5rem;
+  box-shadow:0 18px 36px -16px rgba(0,0,0,.6), inset 0 0 0 1px rgba(120,70,40,.14);
+}
+.paper__title{font-weight:600;font-size:1.5rem;line-height:1.15;margin-bottom:.5rem;color:#7A2E18;border-bottom:1px solid rgba(120,70,40,.22);padding-bottom:.45rem}
+.paper__to{font-style:italic;font-size:1.18rem;margin-bottom:.6rem;color:#5A3A22}
+.paper__body{font-size:1.14rem;line-height:1.5;color:#3A2417}
+.paper__sign{margin-top:1rem;text-align:right;font-style:italic;font-size:1.18rem;color:#5A3A22}
+/* передний карман — закрывает нижнюю часть письма, V-вырез сверху */
+.env-open__pocket{
+  position:absolute;inset:0;z-index:3;border-radius:0 0 12px 12px;
+  background:linear-gradient(135deg,#C53A28,#922517);
+  clip-path:polygon(0 0,0 100%,100% 100%,100% 0,50% 46%);
+  box-shadow:inset 0 8px 16px -10px rgba(0,0,0,.5);
+  transition:filter .6s;
+}
+.env-open.out .env-open__back,.env-open.out .env-open__pocket{filter:brightness(.82)}
+/* клапан — откидывается вверх при вскрытии */
+.env-open__flap{
+  position:absolute;left:0;right:0;top:0;height:50%;z-index:5;transform-origin:top center;
+  background:linear-gradient(160deg,#C0392B,#8B2417);
+  clip-path:polygon(0 0,100% 0,50% 100%);
+  -webkit-backface-visibility:hidden;backface-visibility:hidden;
+  box-shadow:0 8px 14px -8px rgba(0,0,0,.5);
+  transform:rotateX(0deg);
+  transition:transform .8s cubic-bezier(.6,-0.18,.3,1.35), z-index 0s .42s;
+}
+.env-open.unsealed .env-open__flap{transform:rotateX(172deg);z-index:1}
+/* сургучная печать — ломается при вскрытии */
+.env-open__seal{
+  position:absolute;left:50%;top:46%;transform:translate(-50%,-50%) scale(1);z-index:6;
+  width:3.5rem;height:3.5rem;border-radius:50%;display:grid;place-items:center;
+  font-family:var(--serif);font-weight:600;font-size:1.55rem;color:#FBE3D6;
+  background:radial-gradient(circle at 38% 32%,#E0533C,#9E2415 70%);
+  box-shadow:0 5px 12px -3px rgba(0,0,0,.6), inset 0 2px 5px rgba(255,200,180,.45), inset 0 -4px 7px rgba(0,0,0,.4);
+  text-shadow:0 1px 1px rgba(0,0,0,.4);
+  transition:transform .5s cubic-bezier(.5,-0.4,.4,1.4), opacity .5s;
+}
+.env-open__seal::before{content:"";position:absolute;inset:6px;border-radius:50%;border:1px dashed rgba(255,220,205,.5)}
+.env-open.unsealed .env-open__seal{transform:translate(-50%,-50%) scale(.2) rotate(40deg);opacity:0}

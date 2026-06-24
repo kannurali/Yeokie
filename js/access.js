@@ -40,16 +40,23 @@
     });
   }
 
+  /* вкладки только для тех, кто вошёл по коду */
+  var ADMIN_TABS = ["date", "nurri"];
+
   function applyState(){
     var editor = isEditor();
     document.body.classList.toggle("is-editor", editor);
-    /* Вкладка «Свидание» доступна только админам. Если режим выключили, а открыта
-       была именно она — возвращаем на «Галерею», чтобы контент не остался виден. */
+    /* Эти вкладки доступны только админам. Если режим выключили, а открыта была
+       одна из них — возвращаем на «Галерею», чтобы контент не остался виден. */
     if (!editor){
-      var datePanel = document.getElementById("tab-date");
-      if (datePanel && datePanel.classList.contains("active")){
+      var onAdminTab = ADMIN_TABS.some(function(t){
+        var p = document.getElementById("tab-" + t);
+        return p && p.classList.contains("active");
+      });
+      if (onAdminTab){
         document.querySelectorAll(".htab").forEach(function(b){ b.classList.toggle("active", b.dataset.tab === "gallery"); });
         document.querySelectorAll(".tab-panel").forEach(function(p){ p.classList.toggle("active", p.id === "tab-gallery"); });
+        document.body.classList.remove("theme-autumn");   /* лето снова, осень спрятана */
       }
     }
   }
