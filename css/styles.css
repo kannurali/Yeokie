@@ -871,7 +871,8 @@ body.theme-autumn.is-editor .hotbar__lock{color:var(--accent);border-color:rgba(
 
 /* ---------- ПАДАЮЩИЕ ЛИСТЬЯ (фон страницы) ---------- */
 #nurri{position:relative;overflow:hidden}
-.nurri-leaves{position:absolute;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+/* fixed → листья падают через весь экран, а не только по высоте короткой секции */
+.nurri-leaves{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
 .leaf{
   position:absolute;top:-10%;line-height:1;
   will-change:transform;opacity:.85;
