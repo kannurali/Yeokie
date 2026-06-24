@@ -137,7 +137,10 @@ header.nav{ display:none }
   animation:tabIn .22s ease both;
 }
 .tab-panel.active{display:block}
-@keyframes tabIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+/* opacity-only: transform на панели делал её containing-block для position:fixed,
+   из-за чего падающие листья на «Нурри» обрезались по высоте секции (середина
+   экрана). Без transform .nurri-leaves снова меряется от viewport и падает донизу. */
+@keyframes tabIn{from{opacity:0}to{opacity:1}}
 
 /* ---------- HERO (hidden in tab layout) ---------- */
 .hero{display:none}
