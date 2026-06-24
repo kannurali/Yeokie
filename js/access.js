@@ -1,6 +1,7 @@
 /* Yeokie — доступ по коду. Две роли:
-     • EDITOR (код 07092005) — владелец: пишет/отправляет письма, правит весь сайт.
-     • READER (код 07121109) — только читает письма на странице «Нурри».
+     • EDITOR (код 07121109) — полный владелец: правит весь сайт, читает и удаляет
+       письма, но ОТПРАВЛЯТЬ письма не может.
+     • SENDER (код 07122005) — может только отправлять (писать) письма на «Нурри».
    Остальные посетители видят галерею, но страницу «Нурри» и владельческие кнопки — нет.
 
    ВАЖНО про защиту: это клиентская защита. Она прячет управление и блокирует
@@ -14,34 +15,29 @@
    ─── КАК СМЕНИТЬ КОД ───
    1) Откройте сайт, нажмите F12 → вкладка Console.
    2) Выполните:  await YeokieAccess.hashFor('новый-код')
-   3) Скопируйте строку и вставьте её ниже в EDITOR_HASH или READER_HASH.
+   3) Скопируйте строку и вставьте её ниже в EDITOR_HASH или SENDER_HASH.
    4) Закоммитьте и запушьте изменение — новый код вступит в силу.
    ───────────────────────
 */
 (function(){
   /* Два кода доступа (хранятся как SHA-256 — сами пароли в коде не видны):
-       • EDITOR — полный владелец: пишет и отправляет письма, правит весь сайт.
-       • READER — только читает существующие письма на странице «Нурри».
+       • EDITOR — полный владелец: правит весь сайт, читает и удаляет письма,
+                  но ОТПРАВЛЯТЬ письма не может.
+       • SENDER — может только отправлять (писать) письма на странице «Нурри».
      Сменить любой код: в консоли  await YeokieAccess.hashFor('новый-код')
      и вставьте полученную строку в нужную переменную ниже. */
-  var EDITOR_HASH = "90d25a6f03b58fd604fb06bbce506a2b97a6d429c8efaefb2820f60219aede5d"; /* 07092005 — пишет письма */
-  var READER_HASH = "dc74df13a2ecd7685e58f792cbbede5312c5a9b4416cbc919a96bc3d4861ef5c"; /* 07121109 — только читает */
+  var EDITOR_HASH = "dc74df13a2ecd7685e58f792cbbede5312c5a9b4416cbc919a96bc3d4861ef5c"; /* 07121109 — полный владелец, без отправки */
+  var SENDER_HASH = "4387a0e209f6092995114f1ebe3b000654fac76af1082edde86a6b004396f9f4"; /* 07122005 — только отправка писем */
 
-  var STORE_KEY  = "yeokie:role";     /* "editor" | "reader" */
-  var LEGACY_KEY = "yeokie:editor";   /* старый ключ входа — переносим в роль */
+  var STORE_KEY = "yeokie:role2";   /* "editor" | "sender" (версия 2 — старые входы сброшены) */
 
   function role(){
-    try {
-      var r = localStorage.getItem(STORE_KEY);
-      if (r) return r;
-      if (localStorage.getItem(LEGACY_KEY) === "1") return "editor";  /* совместимость со старым входом */
-    } catch(e){}
-    return null;
+    try { return localStorage.getItem(STORE_KEY); } catch(e){ return null; }
   }
   function isEditor(){ return role() === "editor"; }
-  function isReader(){ return role() === "reader"; }
+  function isSender(){ return role() === "sender"; }
   /* любой, кто вошёл по коду (любой роли), видит страницу «Нурри» */
-  function canSeeLetters(){ var r = role(); return r === "editor" || r === "reader"; }
+  function canSeeLetters(){ var r = role(); return r === "editor" || r === "sender"; }
 
   /* SHA-256 → hex. Требует защищённый контекст (https или localhost) — на боевом
      сайте и при локальной проверке это так. */
@@ -63,7 +59,7 @@
 
   function applyState(){
     document.body.classList.toggle("is-editor", isEditor());
-    document.body.classList.toggle("is-reader", isReader());
+    document.body.classList.toggle("is-sender", isSender());
     /* Если открыта вкладка, недоступная текущей роли — уводим на «Галерею»,
        чтобы её контент не остался виден. */
     var active = document.querySelector(".tab-panel.active");
@@ -75,12 +71,12 @@
     }
   }
 
-  /* Возвращает роль ("editor"/"reader") при успехе, иначе false. */
+  /* Возвращает роль ("editor"/"sender") при успехе, иначе false. */
   function unlock(code){
     return sha256Hex(code).then(function(h){
-      var r = (h === EDITOR_HASH) ? "editor" : (h === READER_HASH) ? "reader" : null;
+      var r = (h === EDITOR_HASH) ? "editor" : (h === SENDER_HASH) ? "sender" : null;
       if (r){
-        try { localStorage.setItem(STORE_KEY, r); localStorage.removeItem(LEGACY_KEY); } catch(e){}
+        try { localStorage.setItem(STORE_KEY, r); } catch(e){}
         applyState();
         return r;
       }
@@ -89,7 +85,7 @@
   }
 
   function lock(){
-    try { localStorage.removeItem(STORE_KEY); localStorage.removeItem(LEGACY_KEY); } catch(e){}
+    try { localStorage.removeItem(STORE_KEY); } catch(e){}
     applyState();
   }
 
@@ -128,13 +124,13 @@
       '</div>' +
       '<div data-when="editor">' +
         '<div class="access-pop__title">Вы — владелец 💚</div>' +
-        '<p class="access-pop__sub">Можно писать и отправлять письма, добавлять и удалять контент. Код сохранён на этом устройстве.</p>' +
+        '<p class="access-pop__sub">Можно править весь сайт, читать и удалять письма. Отправлять письма — нельзя. Код сохранён на этом устройстве.</p>' +
         '<div class="access-pop__signout"><span>Полный доступ</span><button type="button" class="js-signout">Выйти</button></div>' +
       '</div>' +
-      '<div data-when="reader">' +
-        '<div class="access-pop__title">Чтение писем 🍂</div>' +
-        '<p class="access-pop__sub">Вы можете открывать и читать письма на странице «Нурри». Код сохранён на этом устройстве.</p>' +
-        '<div class="access-pop__signout"><span>Только чтение</span><button type="button" class="js-signout">Выйти</button></div>' +
+      '<div data-when="sender">' +
+        '<div class="access-pop__title">Отправка писем 🍂</div>' +
+        '<p class="access-pop__sub">Вы можете писать и отправлять письма на странице «Нурри». Код сохранён на этом устройстве.</p>' +
+        '<div class="access-pop__signout"><span>Только отправка писем</span><button type="button" class="js-signout">Выйти</button></div>' +
       '</div>';
     document.body.appendChild(pop);
 
@@ -182,7 +178,7 @@
   /* публичный API: app.js спрашивает isEditor() перед добавлением/удалением */
   window.YeokieAccess = {
     isEditor: isEditor,
-    isReader: isReader,
+    isSender: isSender,
     role: role,
     unlock: unlock,
     lock: lock,

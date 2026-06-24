@@ -800,7 +800,9 @@
       letterClose=document.getElementById('letterClose'),
       envOpenWrap=document.getElementById('envOpenWrap');
 
+  /* владелец (07121109) — читает и удаляет письма; отправитель (07122005) — пишет/отправляет */
   function isEd(){ return !(window.YeokieAccess && !window.YeokieAccess.isEditor()); }
+  function canSend(){ return !!(window.YeokieAccess && window.YeokieAccess.isSender && window.YeokieAccess.isSender()); }
   function saveLetters(){ return persist(LETTERS_KEY, letters); }
   function initialOf(s){ s=String(s||'').trim(); return s ? s.charAt(0).toUpperCase() : 'Н'; }
 
@@ -872,15 +874,15 @@
     if(e.key==='Escape' && letterLb.classList.contains('open')) closeLetter();
   });
 
-  /* написать письмо (только для вошедших по коду) */
+  /* написать письмо — только по коду отправителя */
   letterAddBtn.addEventListener('click', function(){
-    if(!isEd()){ toast('Писать письма может только тот, кто вошёл по коду'); return; }
+    if(!canSend()){ toast('Отправлять письма можно только по коду отправителя'); return; }
     letterForm.classList.add('open');
     document.getElementById('lfBody').focus();
   });
   letterCancel.addEventListener('click', function(){ letterForm.classList.remove('open'); });
   letterSave.addEventListener('click', function(){
-    if(!isEd()){ toast('Писать письма может только тот, кто вошёл по коду'); return; }
+    if(!canSend()){ toast('Отправлять письма можно только по коду отправителя'); return; }
     var to=document.getElementById('lfTo').value.trim();
     var from=document.getElementById('lfFrom').value.trim();
     var title=document.getElementById('lfTitle').value.trim();
