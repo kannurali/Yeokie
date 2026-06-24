@@ -1,0 +1,25 @@
+rules_version = '2';
+
+// Правила доступа к Cloud Firestore для Yeokie.
+//
+// ПОЧЕМУ ПИСЬМА НЕ СОХРАНЯЛИСЬ: на сайте появилась новая коллекция `letters`
+// (конверты на странице «Нурри»), а в правилах базы её не было — Firestore
+// отклонял запись («Не удалось сохранить письмо»). Ниже она добавлена.
+//
+// Это личный сайт без серверной авторизации: чтение/запись открыты, а кто что
+// может — решает код доступа на стороне клиента (js/access.js). Так же работают
+// и остальные коллекции (фото-заметки, комментарии, сборник).
+//
+// КАК ОПУБЛИКОВАТЬ (один раз, ~1 минута):
+//   1) Firebase Console → проект yeokie-8f7d8 → Build → Firestore Database → вкладка Rules.
+//   2) Вставьте весь этот файл, нажмите Publish.
+//   После публикации письма начнут сохраняться и синхронизироваться между устройствами.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /photoNotes/{doc} { allow read, write: if true; }
+    match /comments/{doc}   { allow read, write: if true; }
+    match /collection/{doc} { allow read, write: if true; }
+    match /letters/{doc}    { allow read, write: if true; }
+  }
+}

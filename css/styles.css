@@ -782,11 +782,16 @@ body.is-editor .hotbar__lock{
   transition:color .2s,border-color .2s;
 }
 .access-pop__signout button:hover{color:var(--ink);border-color:rgba(180,214,193,.4)}
-/* показываем нужную секцию окна в зависимости от режима */
-.access-pop [data-when="editor"]{display:none}
+/* показываем нужную секцию окна в зависимости от роли */
+.access-pop [data-when="editor"],
+.access-pop [data-when="reader"]{display:none}
 .access-pop [data-when="locked"]{display:block}
 body.is-editor .access-pop [data-when="editor"]{display:block}
 body.is-editor .access-pop [data-when="locked"]{display:none}
+body.is-reader .access-pop [data-when="reader"]{display:block}
+body.is-reader .access-pop [data-when="locked"]{display:none}
+/* замок подсвечивается оранжевым в режиме чтения */
+body.is-reader .hotbar__lock{color:#E8772E;border-color:rgba(232,119,46,.5);background:rgba(232,119,46,.14)}
 
 /* прячем владельческое управление, пока код не введён.
    .photo-card__input-row / .photo-card__clear — поле и кнопки заметки под фото:
@@ -821,8 +826,11 @@ body:not(.is-editor) .locked-note{display:flex}
    НУРРИ — осенняя страница с конвертами/письмами
    ====================================================================== */
 
-/* вкладка скрыта для тех, кто не вошёл по коду */
-body:not(.is-editor) .htab[data-tab="nurri"]{display:none !important}
+/* вкладка видна и владельцу, и читателю; скрыта для всех остальных */
+body:not(.is-editor):not(.is-reader) .htab[data-tab="nurri"]{display:none !important}
+/* писать письма может только владелец — у читателя нет ни кнопки, ни формы */
+body:not(.is-editor) .letter-actions,
+body:not(.is-editor) .letter-form{display:none !important}
 
 /* ---------- ОСЕННЯЯ ПАЛИТРА (лето → осень) ---------- */
 /* активна, только пока открыта страница «Нурри» — переопределяем переменные,

@@ -1,33 +1,47 @@
-/* Yeokie — доступ к редактированию («режим владельца»).
-
-   Добавлять и удалять фото/видео в «Сборнике» и треки в «Музыке» могут только
-   те, кто знает код доступа: вы и тот один человек, кому вы его дадите.
-   Остальные посетители всё видят, но кнопок добавления/удаления у них нет.
+/* Yeokie — доступ по коду. Две роли:
+     • EDITOR (код 07092005) — владелец: пишет/отправляет письма, правит весь сайт.
+     • READER (код 07121109) — только читает письма на странице «Нурри».
+   Остальные посетители видят галерею, но страницу «Нурри» и владельческие кнопки — нет.
 
    ВАЖНО про защиту: это клиентская защита. Она прячет управление и блокирует
    действия в интерфейсе — обычному гостю мимо неё не пройти. Но технически
    подкованный человек теоретически может записать в базу в обход сайта.
    Полную серверную защиту даёт только Firebase Auth + правила Firestore
-   (вы выбрали простой общий код — этого здесь сознательно нет).
+   (здесь выбран простой общий код — этого сознательно нет).
 
-   Код хранится как SHA-256-хэш, поэтому сам пароль НЕ виден в исходниках на GitHub.
+   Коды хранятся как SHA-256-хэши, поэтому сами пароли НЕ видны в исходниках на GitHub.
 
    ─── КАК СМЕНИТЬ КОД ───
    1) Откройте сайт, нажмите F12 → вкладка Console.
    2) Выполните:  await YeokieAccess.hashFor('новый-код')
-   3) Скопируйте полученную строку и вставьте её ниже в ACCESS_HASH.
+   3) Скопируйте строку и вставьте её ниже в EDITOR_HASH или READER_HASH.
    4) Закоммитьте и запушьте изменение — новый код вступит в силу.
    ───────────────────────
 */
 (function(){
-  /* SHA-256 кода доступа. Сейчас задан ваш код. Чтобы сменить — см. инструкцию выше. */
-  var ACCESS_HASH = "dc74df13a2ecd7685e58f792cbbede5312c5a9b4416cbc919a96bc3d4861ef5c";
+  /* Два кода доступа (хранятся как SHA-256 — сами пароли в коде не видны):
+       • EDITOR — полный владелец: пишет и отправляет письма, правит весь сайт.
+       • READER — только читает существующие письма на странице «Нурри».
+     Сменить любой код: в консоли  await YeokieAccess.hashFor('новый-код')
+     и вставьте полученную строку в нужную переменную ниже. */
+  var EDITOR_HASH = "90d25a6f03b58fd604fb06bbce506a2b97a6d429c8efaefb2820f60219aede5d"; /* 07092005 — пишет письма */
+  var READER_HASH = "dc74df13a2ecd7685e58f792cbbede5312c5a9b4416cbc919a96bc3d4861ef5c"; /* 07121109 — только читает */
 
-  var STORE_KEY = "yeokie:editor";
+  var STORE_KEY  = "yeokie:role";     /* "editor" | "reader" */
+  var LEGACY_KEY = "yeokie:editor";   /* старый ключ входа — переносим в роль */
 
-  function isEditor(){
-    try { return localStorage.getItem(STORE_KEY) === "1"; } catch(e){ return false; }
+  function role(){
+    try {
+      var r = localStorage.getItem(STORE_KEY);
+      if (r) return r;
+      if (localStorage.getItem(LEGACY_KEY) === "1") return "editor";  /* совместимость со старым входом */
+    } catch(e){}
+    return null;
   }
+  function isEditor(){ return role() === "editor"; }
+  function isReader(){ return role() === "reader"; }
+  /* любой, кто вошёл по коду (любой роли), видит страницу «Нурри» */
+  function canSeeLetters(){ var r = role(); return r === "editor" || r === "reader"; }
 
   /* SHA-256 → hex. Требует защищённый контекст (https или localhost) — на боевом
      сайте и при локальной проверке это так. */
@@ -40,40 +54,42 @@
     });
   }
 
-  /* вкладки только для тех, кто вошёл по коду */
-  var ADMIN_TABS = ["date", "nurri"];
+  /* какая вкладка какой роли видна */
+  function tabAllowed(tab){
+    if (tab === "nurri") return canSeeLetters();   /* и читатель, и владелец */
+    if (tab === "date")  return isEditor();        /* только владелец */
+    return true;                                    /* остальные — всем */
+  }
 
   function applyState(){
-    var editor = isEditor();
-    document.body.classList.toggle("is-editor", editor);
-    /* Эти вкладки доступны только админам. Если режим выключили, а открыта была
-       одна из них — возвращаем на «Галерею», чтобы контент не остался виден. */
-    if (!editor){
-      var onAdminTab = ADMIN_TABS.some(function(t){
-        var p = document.getElementById("tab-" + t);
-        return p && p.classList.contains("active");
-      });
-      if (onAdminTab){
-        document.querySelectorAll(".htab").forEach(function(b){ b.classList.toggle("active", b.dataset.tab === "gallery"); });
-        document.querySelectorAll(".tab-panel").forEach(function(p){ p.classList.toggle("active", p.id === "tab-gallery"); });
-        document.body.classList.remove("theme-autumn");   /* лето снова, осень спрятана */
-      }
+    document.body.classList.toggle("is-editor", isEditor());
+    document.body.classList.toggle("is-reader", isReader());
+    /* Если открыта вкладка, недоступная текущей роли — уводим на «Галерею»,
+       чтобы её контент не остался виден. */
+    var active = document.querySelector(".tab-panel.active");
+    var activeTab = active ? active.id.replace("tab-", "") : "gallery";
+    if (!tabAllowed(activeTab)){
+      document.querySelectorAll(".htab").forEach(function(b){ b.classList.toggle("active", b.dataset.tab === "gallery"); });
+      document.querySelectorAll(".tab-panel").forEach(function(p){ p.classList.toggle("active", p.id === "tab-gallery"); });
+      document.body.classList.remove("theme-autumn");   /* лето снова, осень спрятана */
     }
   }
 
+  /* Возвращает роль ("editor"/"reader") при успехе, иначе false. */
   function unlock(code){
     return sha256Hex(code).then(function(h){
-      if (h === ACCESS_HASH){
-        try { localStorage.setItem(STORE_KEY, "1"); } catch(e){}
+      var r = (h === EDITOR_HASH) ? "editor" : (h === READER_HASH) ? "reader" : null;
+      if (r){
+        try { localStorage.setItem(STORE_KEY, r); localStorage.removeItem(LEGACY_KEY); } catch(e){}
         applyState();
-        return true;
+        return r;
       }
       return false;
     }).catch(function(){ return false; });
   }
 
   function lock(){
-    try { localStorage.removeItem(STORE_KEY); } catch(e){}
+    try { localStorage.removeItem(STORE_KEY); localStorage.removeItem(LEGACY_KEY); } catch(e){}
     applyState();
   }
 
@@ -102,8 +118,8 @@
     pop.hidden = true;
     pop.innerHTML =
       '<div data-when="locked">' +
-        '<div class="access-pop__title">Режим редактирования</div>' +
-        '<p class="access-pop__sub">Введите код, чтобы добавлять и удалять фото, видео и музыку.</p>' +
+        '<div class="access-pop__title">Вход по коду</div>' +
+        '<p class="access-pop__sub">Введите код доступа. Один код открывает чтение писем, другой — позволяет их писать и править сайт.</p>' +
         '<form class="access-pop__form" id="accessForm">' +
           '<input type="password" id="accessInput" placeholder="Код доступа" autocomplete="off" autocapitalize="off" spellcheck="false">' +
           '<button type="submit">Войти</button>' +
@@ -112,8 +128,13 @@
       '</div>' +
       '<div data-when="editor">' +
         '<div class="access-pop__title">Вы — владелец 💚</div>' +
-        '<p class="access-pop__sub">Можно добавлять и удалять контент. Код сохранён на этом устройстве.</p>' +
-        '<div class="access-pop__signout"><span>Режим включён</span><button type="button" id="accessSignout">Выйти</button></div>' +
+        '<p class="access-pop__sub">Можно писать и отправлять письма, добавлять и удалять контент. Код сохранён на этом устройстве.</p>' +
+        '<div class="access-pop__signout"><span>Полный доступ</span><button type="button" class="js-signout">Выйти</button></div>' +
+      '</div>' +
+      '<div data-when="reader">' +
+        '<div class="access-pop__title">Чтение писем 🍂</div>' +
+        '<p class="access-pop__sub">Вы можете открывать и читать письма на странице «Нурри». Код сохранён на этом устройстве.</p>' +
+        '<div class="access-pop__signout"><span>Только чтение</span><button type="button" class="js-signout">Выйти</button></div>' +
       '</div>';
     document.body.appendChild(pop);
 
@@ -122,7 +143,7 @@
 
     function openPop(){
       pop.hidden = false;
-      if (!isEditor()){ if (err) err.hidden = true; if (input){ input.value = ""; setTimeout(function(){ input.focus(); }, 30); } }
+      if (!role()){ if (err) err.hidden = true; if (input){ input.value = ""; setTimeout(function(){ input.focus(); }, 30); } }
     }
     function closePop(){ pop.hidden = true; }
     function togglePop(){ pop.hidden ? openPop() : closePop(); }
@@ -138,9 +159,8 @@
       });
     });
 
-    pop.querySelector("#accessSignout").addEventListener("click", function(){
-      lock();
-      closePop();
+    pop.querySelectorAll(".js-signout").forEach(function(b){
+      b.addEventListener("click", function(){ lock(); closePop(); });
     });
 
     /* Один обработчик кликов по документу:
@@ -162,6 +182,8 @@
   /* публичный API: app.js спрашивает isEditor() перед добавлением/удалением */
   window.YeokieAccess = {
     isEditor: isEditor,
+    isReader: isReader,
+    role: role,
     unlock: unlock,
     lock: lock,
     hashFor: sha256Hex   /* помощник для смены кода из консоли */
